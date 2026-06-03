@@ -11,7 +11,7 @@ Reusable Terraform modules implementing FedRAMP High and CJIS v6.0 baselines on 
 
 This repo is the Terraform half of the **AWS Fundamentals Labs Curriculum** — a 10-lab series where every lab pairs a Console-first walkthrough on [`luigicarpio.dev/blog`](https://luigicarpio.dev/blog) with a matching module here. The pairing keeps the IaC defensible at the AWS-service level (CGE-P Domain 2 alignment) without abandoning click-path fluency.
 
-> **Status:** v1.0 chassis under construction. Modules land as the labs ship (Lab 1 — IAM Hardening — first).
+> **Status:** v1.0 chassis under construction. **`iam-hardening` (Lab 1) v0.1.0 scaffold landed in `modules/iam-hardening/`** — variable contracts + tag-merging + `compliance_attestation` output structure in place. Full implementation (admin role, permissions boundary, password policy) ships ~2026-06-30. Other modules land as their corresponding labs ship.
 
 ## Why This Exists
 
@@ -149,18 +149,17 @@ Pin the `?ref=` to a tagged release for reproducible builds. The `examples/<modu
 ```
 aws-grc-terraform-modules/
 ├── modules/
-│   ├── _template/                 # copy-and-customize scaffold for new modules
-│   ├── iam-hardening/             # Lab 1 — IAM baseline (AC-2/3/6, IA-2, IA-5)
-│   ├── s3-compliant-bucket/       # Lab 2 — S3 with SSE-KMS, Object Lock, TLS-only
-│   ├── vpc-boundary/              # Lab 3 — CJI enclave boundary (SC-7)
-│   ├── cloudtrail-multi-region/   # Lab 4 — org trail, log archive (AU-*)
-│   ├── config-recorder/           # Lab 5 — Config + custom rules (CA-7, CM-3/6)
-│   ├── security-hub/              # Lab 6 — Security Hub posture
-│   ├── kms-key-management/        # Lab 7 — CMK with rotation (SC-12/13/28)
-│   └── guardduty-eventbridge/     # Lab 8 — detection + alerting (SI-4)
-├── policy/                        # shared OPA bundle + helpers (per-module bundles live under modules/<name>/policy/)
-├── examples/                      # cross-module integration examples
-├── .github/workflows/             # CI: fmt, validate, tfsec, checkov, conftest, terraform-docs drift
+│   ├── iam-hardening/             # Lab 1 — v0.1.0 SCAFFOLD landed; implementation ~2026-06-30
+│   ├── s3-compliant-bucket/       # planned — Lab 2 (S3 with SSE-KMS, Object Lock, TLS-only)
+│   ├── vpc-boundary/              # planned — Lab 3 (CJI enclave boundary, SC-7)
+│   ├── cloudtrail-multi-region/   # planned — Lab 4 (org trail, log archive, AU-*)
+│   ├── config-recorder/           # planned — Lab 5 (Config + custom rules, CA-7, CM-3/6)
+│   ├── security-hub/              # planned — Lab 6 (Security Hub posture)
+│   ├── kms-key-management/        # planned — Lab 7 (CMK with rotation, SC-12/13/28)
+│   └── guardduty-eventbridge/     # planned — Lab 8 (detection + alerting, SI-4)
+├── policy/                        # planned — shared OPA bundle + helpers (per-module bundles under modules/<name>/policy/)
+├── examples/                      # planned — cross-module integration examples
+├── .github/workflows/             # planned — CI: fmt, validate, tfsec, checkov, conftest, terraform-docs drift
 ├── LICENSE.txt
 └── README.md
 ```
