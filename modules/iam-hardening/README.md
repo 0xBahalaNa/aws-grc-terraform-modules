@@ -1,51 +1,72 @@
 # Module: iam-hardening
 
-Lab 1 module. IAM baseline aligned with NIST 800-53 Rev 5 **AC-2 / AC-3 / AC-6**, **IA-2(1)(2)**, and **IA-5**, with the CJIS v6.0 **AAL2** (MFA on trust policy) and **agency-managed-CMK** / **CJI-user tagging** deltas layered on top where the framework exceeds FedRAMP High.
+Lab 1 module (v1.1.0). IAM baseline aligned with NIST 800-53 Rev 5 **AC-2 / AC-3 / AC-6**, **IA-2(1)(2)**, and **IA-5**, with CJIS v6.0 **IA-2 AAL2** (MFA on trust policy) and **CJI-user tagging** deltas.
 
-> **Status: v0.1.0 SCAFFOLD.** Variable contracts, required-tag merging, and the `compliance_attestation` output structure are in place. Resource implementations (admin role with MFA-required trust policy, permissions boundary, separated service role, account password policy) land per the Lab 1 implementation PR (~2026-06-30). Companion Console walkthrough on [luigicarpio.dev/blog](https://luigicarpio.dev/blog).
+> **Status: v1.1.0 implemented.** Password policy, `RequireMFA` deny policy, baseline groups, `Lab*` roles, and account Access Analyzer. Companion Console walkthrough on [luigicarpio.dev/blog](https://luigicarpio.dev/blog). Permissions boundaries are **deferred** to `aws-compliance-as-code` — not in this module.
+
+## What This Module Creates
+
+| Lab step | Resource | Control |
+|---|---|---|
+| 1 | `aws_iam_account_password_policy` | IA-5 / IA-5(1) |
+| 3 | `aws_iam_policy` (`RequireMFA`) + group attachments | IA-2(1), IA-2(2) |
+| 4 | `aws_iam_group` ×3 + managed policy attachments | AC-2, AC-3, AC-6 |
+| 5 | `aws_iam_role` ×3 (auditor MFA trust, EC2, Lambda) | AC-2, IA-2 |
+| 6 | `aws_accessanalyzer_analyzer` (optional) | AC-3, AC-6 external-access detection |
+
+**Scope limits (honest framing):**
+
+- **No `aws_iam_user` resources** — users and group memberships are out of module scope (console/lifecycle managed).
+- **`lab-admins` default includes `AdministratorAccess`** — this mirrors the Lab 1 console baseline (MFA-gated via `RequireMFA`), not production least-privilege. Tighten `var.groups` for real workloads.
+- **RequireMFA attaches to groups only** — governs principals once they are group members; module does not assign users.
 
 ## Controls Addressed
 
 | NIST 800-53 Rev 5 | FedRAMP High | CJIS v6.0 | How This Module Enforces It |
-|---|:---:|:---:|---|
-| AC-2 (Account Management) | Yes | Policy Area 5 + CJI-user delta | Tag convention; CJI-flagged roles emitted as separate `aws_iam_role` resources |
-| AC-3 (Access Enforcement) | Yes | Policy Area 5 | Role trust policies + resource-scoped inline policies |
-| AC-6 / AC-6(9) (Least Privilege) | Yes | Policy Area 5 | Permissions boundary on every human-assumable role |
-| IA-2(1)(2) (MFA) | Yes | IA-2 AAL2 delta | `aws:MultiFactorAuthPresent` condition required in admin trust policy |
-| IA-5 (Authenticator Management) | Yes | Policy Area 6 | `aws_iam_account_password_policy` enforces length / complexity / rotation |
+|---|---|:---:|---|
+| AC-2 (Account Management) | Yes | 5.5.x delta | Group-based access model; optional `cji_user_role` tag on human-assumable roles |
+| AC-3 (Access Enforcement) | Yes | Policy Area 5 | Role trust policies; RequireMFA deny on group members |
+| AC-6 (Least Privilege) | Yes | Policy Area 5 | Tiered group grants (admin/dev/auditor); MFA gate on all group permissions |
+| IA-2(1)(2) (MFA) | Yes | IA-2 AAL2 | `BoolIfExists` on `aws:MultiFactorAuthPresent`; auditor role trust requires MFA |
+| IA-5 (Authenticator Management) | Yes | Policy Area 6 | Account password policy (14-char, complexity, 90-day, reuse 5) |
+
+## Brownfield / Import
+
+If you built Lab 1 in the Console first (same account), `terraform apply` will conflict on fixed names (`RequireMFA`, `lab-admins`, `lab-account-analyzer`, etc.). Options:
+
+1. **Import** existing resources into Terraform state, or
+2. Set `enable_access_analyzer = false` if an analyzer already exists, and customize `access_analyzer_name` / group names via variables.
+
+See [Terraform import](https://developer.hashicorp.com/terraform/cli/import).
 
 ## Compliance Attestation Output
 
-This module emits a `compliance_attestation` output that downstream consumers (e.g., [`oscal-evidence-pipeline`](https://github.com/0xBahalaNa/oscal-evidence-pipeline)) cite as evidence. The attestation is **self-verifying** — each per-control boolean reads from actual deployed resource state (not from input variables) once the implementation PR lands.
-
-Example output shape (final implementation):
+Self-verifying booleans read **deployed resource attributes** (not inputs):
 
 ```json
 {
   "module": "iam-hardening",
-  "module_version": "0.1.0",
+  "module_version": "1.1.0",
   "framework_targets": ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.0"],
   "controls_satisfied": ["AC-2", "AC-3", "AC-6", "IA-2(1)", "IA-2(2)", "IA-5"],
-  "cjis_v6_deltas_addressed": [
-    "5.5.x — CJI-user tag convention",
-    "IA-2 AAL2 — MFA on trust policy"
-  ],
-  "mfa_required_on_admin_role_trust_policy": true,
-  "permission_boundary_attached_to_admin": true,
-  "service_role_separated_from_admin": true,
-  "cji_user_tag_convention_enforced": true,
-  "required_tags_present": true
+  "password_policy_meets_minimums": true,
+  "require_mfa_policy_bool_if_exists": true,
+  "mfa_enforcement_policy_on_all_groups": true,
+  "auditor_role_mfa_trust_enforced": true,
+  "access_analyzer_enabled": true,
+  "required_tags_present": true,
+  "cji_user_tag_convention_enforced": true
 }
 ```
 
-## Usage (Once Implemented)
+## Usage
 
 ```hcl
 module "iam_baseline" {
   source = "git::https://github.com/0xBahalaNa/aws-grc-terraform-modules.git//modules/iam-hardening?ref=v1.1.0"
 
-  environment               = "prod"
-  project_tag               = "compliance-as-code"
+  environment               = "dev"
+  project_tag               = "lab-1-iam-hardening"
   required_compliance_scope = "fedramp-high"
   cji_users_enabled         = true
 }
@@ -59,10 +80,9 @@ Pin `?ref=` to a tagged release for reproducible builds.
 
 ## Roadmap
 
-- **v0.1.0 (this commit):** scaffold — variable contracts + tag merging + attestation output structure
-- **v1.1.0 (Lab 1 implementation PR, ~2026-06-30):** admin role + permissions boundary + service role + password policy + per-control attribute reads in `compliance_attestation`
-- **v1.2.0:** OPA/Rego policy bundle (`policy/iam-hardening.rego` + `policy/iam-hardening_test.rego`) wired into CI via `conftest test`
-- **v1.3.0:** `examples/basic/` end-to-end consumer scenario; `terraform-docs` drift check enabled
+- **v1.1.0 (this release):** Lab 1 baseline resources + self-verifying attestation
+- **v1.2.0:** OPA/Rego policy bundle + CI `conftest test`
+- **v1.3.0:** `examples/basic/` + terraform-docs drift check (chassis)
 
 ## License
 
