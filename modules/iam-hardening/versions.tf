@@ -1,6 +1,5 @@
-# Terraform + provider version pins for iam-hardening module.
-# Pinned to >= 1.6 to use the typed `validation` block and `optional()` object
-# attributes the cross-variable compliance contracts depend on.
+# Terraform + provider version pins for iam-hardening-module.
+# Pinned to >= 1.6 to use validation blocks and optional() object attributes.
 
 terraform {
   required_version = ">= 1.6"
