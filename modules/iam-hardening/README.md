@@ -1,8 +1,8 @@
 # Module: iam-hardening
 
-Lab 1 module (v1.1.0). IAM baseline aligned with NIST 800-53 Rev 5 **AC-2 / AC-3 / AC-6**, **IA-2(1)(2)**, and **IA-5**, with CJIS v6.0 **IA-2 AAL2** (MFA on trust policy) and **CJI-user tagging** deltas.
+Lab 1 module (v1.1.1). IAM baseline aligned with NIST 800-53 Rev 5 **AC-2 / AC-3 / AC-6**, **IA-2(1)(2)**, and **IA-5**, with CJIS v6.0 **IA-2 AAL2** (MFA on trust policy) and **CJI-user tagging** deltas.
 
-> **Status: v1.1.0 implemented.** Password policy, `RequireMFA` deny policy, baseline groups, `Lab*` roles, and account Access Analyzer. Companion Console walkthrough on [luigicarpio.dev/blog](https://luigicarpio.dev/blog). Permissions boundaries are **deferred** to `aws-compliance-as-code` — not in this module.
+> **Status: v1.1.1 implemented.** Password policy, `RequireMFA` deny policy, baseline groups, `Lab*` roles, and account Access Analyzer. Companion Console walkthrough on [luigicarpio.dev/blog](https://luigicarpio.dev/blog). Permissions boundaries are **deferred** to `aws-compliance-as-code` — not in this module.
 
 ## What This Module Creates
 
@@ -12,7 +12,7 @@ Lab 1 module (v1.1.0). IAM baseline aligned with NIST 800-53 Rev 5 **AC-2 / AC-3
 | 3 | `aws_iam_policy` (`RequireMFA`) + group attachments | IA-2(1), IA-2(2) |
 | 4 | `aws_iam_group` ×3 + managed policy attachments | AC-2, AC-3, AC-6 |
 | 5 | `aws_iam_role` ×3 (auditor MFA trust, EC2, Lambda) | AC-2, IA-2 |
-| 6 | `aws_accessanalyzer_analyzer` (optional) | AC-3, AC-6 external-access detection |
+| 6 | `aws_accessanalyzer_analyzer` (optional) | CA-7 continuous monitoring (RA-5/AC-6 supporting) |
 
 **Scope limits (honest framing):**
 
@@ -46,7 +46,7 @@ Self-verifying booleans read **deployed resource attributes** (not inputs):
 ```json
 {
   "module": "iam-hardening",
-  "module_version": "1.1.0",
+  "module_version": "1.1.1",
   "framework_targets": ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.0"],
   "controls_satisfied": ["AC-2", "AC-3", "AC-6", "IA-2(1)", "IA-2(2)", "IA-5"],
   "password_policy_meets_minimums": true,
@@ -63,7 +63,7 @@ Self-verifying booleans read **deployed resource attributes** (not inputs):
 
 ```hcl
 module "iam_baseline" {
-  source = "git::https://github.com/0xBahalaNa/aws-grc-terraform-modules.git//modules/iam-hardening?ref=v1.1.0"
+  source = "git::https://github.com/0xBahalaNa/aws-grc-terraform-modules.git//modules/iam-hardening?ref=v1.1.1"
 
   environment               = "dev"
   project_tag               = "lab-1-iam-hardening"
@@ -78,11 +78,26 @@ output "iam_compliance_evidence" {
 
 Pin `?ref=` to a tagged release for reproducible builds.
 
+## Examples
+
+Runnable caller under `examples/basic/` — init, validate, and plan from that directory:
+
+```bash
+cd modules/iam-hardening/examples/basic
+terraform init
+terraform validate
+# Set AWS_REGION or a default region in ~/.aws/config before plan.
+terraform plan
+```
+
+Plan before apply. Brownfield accounts with existing Lab 1 resources may need import or non-prod `enable_access_analyzer = false`.
+
 ## Roadmap
 
-- **v1.1.0 (this release):** Lab 1 baseline resources + self-verifying attestation
-- **v1.2.0:** OPA/Rego policy bundle + CI `conftest test`
-- **v1.3.0:** `examples/basic/` + terraform-docs drift check (chassis)
+- **v1.1.0:** Lab 1 baseline resources + self-verifying attestation
+- **v1.1.1 (shape pass):** Lab 2.3 control comments, prod Access Analyzer validation, `examples/basic/`
+- **v1.2.0:** OPA/Rego policy bundle + CI `conftest test` (chassis)
+- **v1.3.0:** terraform-docs drift check
 
 ## License
 

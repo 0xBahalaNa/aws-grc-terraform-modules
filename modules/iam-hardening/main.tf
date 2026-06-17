@@ -1,4 +1,4 @@
-# iam-hardening — Lab 1 module (v1.1.0)
+# iam-hardening — Lab 1 module (v1.1.1)
 #
 # Codifies Lab 1 console baseline: password policy, RequireMFA deny policy,
 # baseline groups, Lab* roles (MFA-conditioned auditor trust), Access Analyzer.
@@ -19,7 +19,7 @@ locals {
     environment      = var.environment
     managed_by       = "aws-grc-terraform-modules/iam-hardening"
     framework_target = "FedRAMP-High,CJIS-v6.0,NIST-800-53-Rev-5"
-    module_version   = "1.1.0"
+    module_version   = "1.1.1"
   }
 
   merged_tags = merge(var.tags, local.required_tags)
@@ -120,6 +120,7 @@ locals {
   }
 }
 
+# IA-5 — Account password policy (authenticator strength / rotation)
 resource "aws_iam_account_password_policy" "this" {
   minimum_password_length      = var.password_policy.minimum_password_length
   require_lowercase_characters = var.password_policy.require_lowercase_characters
@@ -130,6 +131,7 @@ resource "aws_iam_account_password_policy" "this" {
   password_reuse_prevention    = var.password_policy.password_reuse_prevention
 }
 
+# IA-2(1)(2) — RequireMFA deny policy (BoolIfExists on aws:MultiFactorAuthPresent)
 resource "aws_iam_policy" "require_mfa" {
   name        = "RequireMFA"
   description = "Deny all actions unless MFA is present (BoolIfExists on aws:MultiFactorAuthPresent)."
@@ -137,23 +139,27 @@ resource "aws_iam_policy" "require_mfa" {
   tags        = local.merged_tags
 }
 
+# AC-2 — Baseline IAM groups (account management / role separation)
 resource "aws_iam_group" "this" {
   for_each = local.groups
   name     = each.key
 }
 
+# IA-2(1)(2) — Attach RequireMFA to every group member principal
 resource "aws_iam_group_policy_attachment" "require_mfa" {
   for_each   = aws_iam_group.this
   group      = each.value.name
   policy_arn = aws_iam_policy.require_mfa.arn
 }
 
+# AC-6 — Tiered managed-policy grants per group (least privilege)
 resource "aws_iam_group_policy_attachment" "managed" {
   for_each   = local.group_managed_attachments
   group      = aws_iam_group.this[each.value.group_name].name
   policy_arn = each.value.policy_arn
 }
 
+# AC-6 — Custom inline policies scoped to group tier
 resource "aws_iam_policy" "group_custom" {
   for_each = local.group_custom_policies
   name     = "ih-${substr(sha256(each.key), 0, 12)}"
@@ -161,12 +167,14 @@ resource "aws_iam_policy" "group_custom" {
   tags     = local.merged_tags
 }
 
+# AC-6 — Bind custom policies to groups
 resource "aws_iam_group_policy_attachment" "group_custom" {
   for_each   = aws_iam_policy.group_custom
   group      = aws_iam_group.this[local.group_custom_policies[each.key].group_name].name
   policy_arn = each.value.arn
 }
 
+# AC-2 / IA-2 — Baseline IAM roles with MFA-conditioned trust where applicable
 resource "aws_iam_role" "this" {
   for_each = local.roles
   name     = each.key
@@ -177,12 +185,14 @@ resource "aws_iam_role" "this" {
   tags = local.role_tags[each.key]
 }
 
+# AC-6 — Least-privilege policy attachments per role
 resource "aws_iam_role_policy_attachment" "this" {
   for_each   = local.role_policy_attachments
   role       = aws_iam_role.this[each.value.role_name].name
   policy_arn = each.value.policy_arn
 }
 
+# AC-2 — EC2 instance profile for LabEC2InstanceProfile role
 resource "aws_iam_instance_profile" "this" {
   for_each = { for name, role in local.roles : name => role if role.create_instance_profile }
   name     = each.key
@@ -190,6 +200,8 @@ resource "aws_iam_instance_profile" "this" {
   tags     = local.merged_tags
 }
 
+
+# CA-7 — Account IAM Access Analyzer (detective external-access monitoring; RA-5 supporting, AC-6 informing)
 resource "aws_accessanalyzer_analyzer" "this" {
   count         = var.enable_access_analyzer ? 1 : 0
   analyzer_name = var.access_analyzer_name
