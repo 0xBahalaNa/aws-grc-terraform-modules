@@ -120,6 +120,11 @@ variable "enable_access_analyzer" {
   description = "Create account-level IAM Access Analyzer (Lab 1 step 6)."
   type        = bool
   default     = true
+
+  validation {
+    condition     = var.environment != "prod" || var.enable_access_analyzer
+    error_message = "Access Analyzer cannot be disabled in prod (CM-6 baseline config / CA-7 continuous-monitoring continuity)."
+  }
 }
 
 variable "access_analyzer_name" {
