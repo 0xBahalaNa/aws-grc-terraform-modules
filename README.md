@@ -75,7 +75,7 @@ Module defaults target CJIS v6.0 where it exceeds FedRAMP High. The three primar
 - **CJI-user tagging convention (AC-2 delta).** `iam-hardening` exposes a `cji_user_role` tag on human-assumable roles that downstream quarterly access review automation can filter on. Required tags are layered on top of consumer tags via `merge(var.tags, local.required_tags)` so they cannot be suppressed.
 - **1-year minimum audit retention with weekly review (AU-6 delta).** `cloudtrail-multi-region` sets `s3_object_lock_retention_days >= 365` as a variable default, with plan-time validation enforcing `>= 365` when `environment == "prod"` using the boolean implication `(env != "prod") ∨ (retention >= 365)`. Weekly-review evidence tags are emitted in the attestation output.
 
-CJIS v6.0 became audit standard April 1, 2026 and aligns with NIST 800-53 Rev 5 as of December 2024.
+CJIS v6.0 (published Dec 27, 2024) aligns to NIST 800-53 Rev 5; default audit baseline from April 1, 2026; Priority 2-4 fully enforceable Oct 1, 2027 (timing varies by state CSA).
 
 ## Sample Evidence Output
 
