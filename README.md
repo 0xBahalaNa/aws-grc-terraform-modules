@@ -194,4 +194,4 @@ Modules land incrementally as the corresponding lab in the AWS Fundamentals Labs
 
 ## License
 
-MIT
+MIT. Full text in [LICENSE](LICENSE).
