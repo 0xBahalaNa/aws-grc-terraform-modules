@@ -1,4 +1,4 @@
-# s3-compliant-bucket — Lab 2 module (v1.2.0)
+# s3-compliant-bucket — Lab 2 module (v1.2.1)
 #
 # Codifies Lab 2 console baseline: SSE-KMS with a required customer-managed
 # CMK, Object Lock Governance (365-day floor), versioning forced on,
@@ -20,7 +20,7 @@ locals {
     environment      = var.environment
     managed_by       = "aws-grc-terraform-modules/s3-compliant-bucket"
     framework_target = "FedRAMP-High,CJIS-v6.0,NIST-800-53-Rev-5"
-    module_version   = "1.2.0"
+    module_version   = "1.2.1"
   }
 
   # The AWS provider exports `rule` as a set, not a list — [0] is illegal.
