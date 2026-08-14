@@ -138,7 +138,7 @@ Pin the `?ref=` to a tagged release for reproducible builds. Each module will sh
 aws-grc-terraform-modules/
 ├── modules/
 │   ├── iam-hardening/             # Lab 1: v1.1.0 implemented (password policy, RequireMFA, groups, roles, Access Analyzer)
-│   ├── s3-compliant-bucket/       # planned: Lab 2 (S3 with SSE-KMS, Object Lock, TLS-only)
+│   ├── s3-compliant-bucket/       # Lab 2: v1.2.1 implemented (SSE-KMS, Object Lock, TLS-only, attestation)
 │   ├── vpc-boundary/              # planned: Lab 3 (CJI enclave boundary, SC-7)
 │   ├── cloudtrail-multi-region/   # planned: Lab 4 (org trail, log archive, AU-*)
 │   ├── config-recorder/           # planned: Lab 5 (Config + custom rules, CA-7, CM-3/6)
