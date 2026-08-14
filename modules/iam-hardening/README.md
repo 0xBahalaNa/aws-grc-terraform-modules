@@ -1,6 +1,6 @@
 # Module: iam-hardening
 
-Lab 1 module (v1.1.1). IAM baseline aligned with NIST 800-53 Rev 5 **AC-2 / AC-3 / AC-6**, **IA-2(1)(2)**, and **IA-5**, with CJIS v6.0 **IA-2 AAL2** (MFA on trust policy) and **CJI-user tagging** deltas.
+Lab 1 module (v1.1.1). IAM baseline aligned with NIST 800-53 Rev 5 **AC-2 / AC-3 / AC-6**, **IA-2(1)(2)**, and **IA-5**, with CJIS v6.1 **IA-2 AAL2** (MFA on trust policy) and **CJI-user tagging** deltas.
 
 > **Status: v1.1.1 implemented.** Password policy, `RequireMFA` deny policy, baseline groups, `Lab*` roles, and account Access Analyzer. Companion Console walkthrough on [luigicarpio.dev/blog](https://luigicarpio.dev/blog). Permissions boundaries are **deferred** to `aws-compliance-as-code` — not in this module.
 
@@ -22,13 +22,13 @@ Lab 1 module (v1.1.1). IAM baseline aligned with NIST 800-53 Rev 5 **AC-2 / AC-3
 
 ## Controls Addressed
 
-| NIST 800-53 Rev 5 | FedRAMP High | CJIS v6.0 | How This Module Enforces It |
+| NIST 800-53 Rev 5 | FedRAMP High | CJIS v6.1 | How This Module Enforces It |
 |---|---|:---:|---|
-| AC-2 (Account Management) | Yes | 5.5.x delta | Group-based access model; optional `cji_user_role` tag on human-assumable roles |
-| AC-3 (Access Enforcement) | Yes | Policy Area 5 | Role trust policies; RequireMFA deny on group members |
-| AC-6 (Least Privilege) | Yes | Policy Area 5 | Tiered group grants (admin/dev/auditor); MFA gate on all group permissions |
-| IA-2(1)(2) (MFA) | Yes | IA-2 AAL2 | `BoolIfExists` on `aws:MultiFactorAuthPresent`; auditor role trust requires MFA |
-| IA-5 (Authenticator Management) | Yes | Policy Area 6 | Account password policy (14-char, complexity, 90-day, reuse 5) |
+| AC-2 (Account Management) | Yes | P1 — quarterly CJI access-review delta | Group-based access model; optional `cji_user_role` tag on human-assumable roles |
+| AC-3 (Access Enforcement) | Yes | P1 | Role trust policies; RequireMFA deny on group members |
+| AC-6 (Least Privilege) | Yes | P1 | Tiered group grants (admin/dev/auditor); MFA gate on all group permissions |
+| IA-2(1)(2) (MFA) | Yes | P1 — AAL2 phishing-resistant MFA delta | `BoolIfExists` on `aws:MultiFactorAuthPresent`; auditor role trust requires MFA |
+| IA-5 (Authenticator Management) | Yes | P1 | Account password policy (14-char, complexity, 90-day, reuse 5) |
 
 ## Brownfield / Import
 
@@ -47,7 +47,7 @@ Self-verifying booleans read **deployed resource attributes** (not inputs):
 {
   "module": "iam-hardening",
   "module_version": "1.1.1",
-  "framework_targets": ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.0"],
+  "framework_targets": ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.1"],
   "controls_satisfied": ["AC-2", "AC-3", "AC-6", "IA-2(1)", "IA-2(2)", "IA-5"],
   "password_policy_meets_minimums": true,
   "require_mfa_policy_bool_if_exists": true,

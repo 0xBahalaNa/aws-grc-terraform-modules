@@ -19,7 +19,7 @@ locals {
     project          = var.project_tag
     environment      = var.environment
     managed_by       = "aws-grc-terraform-modules/s3-compliant-bucket"
-    framework_target = "FedRAMP-High,CJIS-v6.0,NIST-800-53-Rev-5"
+    framework_target = "FedRAMP-High,CJIS-v6.1,NIST-800-53-Rev-5"
     module_version   = "1.2.1"
   }
 

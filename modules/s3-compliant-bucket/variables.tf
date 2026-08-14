@@ -24,7 +24,7 @@ variable "bucket_name" {
   }
 }
 
-# AU-11 / CJIS 5.4.x — 1-year floor. Default is the floor; lower values fail
+# AU-11 / CJIS AU-11 (P4) — 1-year floor. Default is the floor; lower values fail
 # at plan time. HCL validation has no if: this is a straight comparison.
 variable "object_lock_retention_days" {
   description = "Object Lock default retention in days (GOVERNANCE). Fail-closed at the CJIS / AU-11 1-year floor."

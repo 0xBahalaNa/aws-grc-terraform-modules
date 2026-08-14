@@ -1,6 +1,6 @@
 # Module: s3-compliant-bucket
 
-Lab 2 module (v1.2.1). Evidence bucket aligned with NIST 800-53 Rev 5 **SC-28 / SC-28(1)**, **SC-13**, **SC-8**, **AC-3 / AC-6**, **AU-11**, **AU-9**, **SI-7 / CP-9**, and **CM-6**, with CJIS v6.0 deltas (agency-managed CMK; 1-year Object Lock retention).
+Lab 2 module (v1.2.1). Evidence bucket aligned with NIST 800-53 Rev 5 **SC-28 / SC-28(1)**, **SC-13**, **SC-8**, **AC-3 / AC-6**, **AU-11**, **AU-9**, **SI-7 / CP-9**, and **CM-6**, with CJIS v6.1 deltas (agency-managed CMK; 1-year Object Lock retention).
 
 > **Status: v1.2.1 implemented.** SSE-KMS with a required customer-managed CMK, Object Lock Governance (365-day floor), versioning, bucket-level Block Public Access, TLS-only bucket policy, optional server access logging to a consumer-supplied bucket, and one noncurrent-version lifecycle rule. Companion Console walkthrough: [luigicarpio.dev/blog/2026-07-aws-lab-2-s3-compliant-bucket](https://luigicarpio.dev/blog/2026-07-aws-lab-2-s3-compliant-bucket). OPA/Rego policy bundle is **deferred** to the chassis minor — not in this module.
 
@@ -30,7 +30,7 @@ Lab 2 module (v1.2.1). Evidence bucket aligned with NIST 800-53 Rev 5 **SC-28 / 
 
 ## Controls Addressed
 
-| NIST 800-53 Rev 5 | FedRAMP High | CJIS v6.0 | How This Module Enforces It |
+| NIST 800-53 Rev 5 | FedRAMP High | CJIS v6.1 | How This Module Enforces It |
 |---|:---:|:---:|---|
 | SC-28 / SC-28(1) (Protection of Information at Rest) | Yes | P2 — agency-managed CMK delta | SSE-KMS default encryption; required `key/` CMK ARN; `blocked_encryption_types = ["SSE-C"]` |
 | SC-13 (Cryptographic Protection) | Yes | P2 — agency-managed CMK delta | Customer-managed CMK only. GovCloud `arn:aws-us-gov:kms:…:key/…` passes the regex (FIPS endpoints annotated, not deployed) |
@@ -54,7 +54,7 @@ Self-verifying booleans read **deployed resource attributes** (not inputs). Samp
 {
   "module": "s3-compliant-bucket",
   "module_version": "1.2.1",
-  "framework_targets": ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.0"],
+  "framework_targets": ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.1"],
   "controls_satisfied": ["SC-28", "SC-28(1)", "SC-8", "AC-3", "AC-6", "CP-9", "SI-7", "AU-11", "AU-9"],
   "environment": "dev",
   "required_compliance_scope": "fedramp-high",

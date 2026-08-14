@@ -27,7 +27,7 @@ output "compliance_attestation" {
   value = {
     module            = "s3-compliant-bucket"
     module_version    = local.required_tags.module_version
-    framework_targets = ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.0"]
+    framework_targets = ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.1"]
     # concat() joins two lists. AU-9 is only claimed when the logging
     # resource exists — same length() check as access_logging_enabled.
     # https://developer.hashicorp.com/terraform/language/functions/concat
