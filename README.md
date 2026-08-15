@@ -1,5 +1,5 @@
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat)
-![CJIS](https://img.shields.io/badge/CJIS-Security%20Policy%20v6.0-cc0000?style=flat)
+![CJIS](https://img.shields.io/badge/CJIS-Security%20Policy%20v6.1-cc0000?style=flat)
 ![FedRAMP](https://img.shields.io/badge/FedRAMP-High%20Baseline-0071bc?style=flat)
 ![NIST 800-53](https://img.shields.io/badge/NIST-800--53%20Rev%205-004990?style=flat)
 ![Terraform](https://img.shields.io/badge/Terraform-%E2%89%A5%201.6-7B42BC?style=flat)
@@ -7,7 +7,7 @@
 
 # AWS GRC Terraform Modules
 
-Reusable Terraform modules implementing FedRAMP High and CJIS v6.0 baselines on AWS. Each module is one self-contained compliance unit (IAM hardening, KMS CMK, S3 with SSE/Object Lock, VPC enclave boundary, CloudTrail multi-region, AWS Config recorder, Security Hub, GuardDuty). Each ships with NIST 800-53 Rev 5 control mappings, OPA/Rego policy tests, and tfsec/checkov gates wired into CI.
+Reusable Terraform modules implementing FedRAMP High and CJIS v6.1 baselines on AWS. Each module is one self-contained compliance unit (IAM hardening, KMS CMK, S3 with SSE/Object Lock, VPC enclave boundary, CloudTrail multi-region, AWS Config recorder, Security Hub, GuardDuty). Each ships with NIST 800-53 Rev 5 control mappings, OPA/Rego policy tests, and tfsec/checkov gates wired into CI.
 
 This repo is the Terraform half of the AWS Fundamentals Labs Curriculum: a 10-lab series where every lab pairs a Console-first walkthrough on [`luigicarpio.dev/blog`](https://luigicarpio.dev/blog) with a matching module here. The pairing keeps the IaC defensible at the AWS-service level (CGE-P Domain 2 alignment) without abandoning click-path fluency.
 
@@ -17,7 +17,7 @@ This repo is the Terraform half of the AWS Fundamentals Labs Curriculum: a 10-la
 
 Most "compliant Terraform" I find on GitHub is a single monolithic stack. Useful as a reference, hard to reuse. This repo inverts that: the unit of reuse is the module, not the stack. A flagship project (`aws-compliance-as-code`, `oscal-evidence-pipeline`, `iam-access-review`) consumes the module it needs, composes it with project-specific config, and inherits the control coverage without re-implementing the baseline. The compliance contract lives in the module: encoded as HCL variable defaults, OPA/Rego policy bundles, and a self-verifying `compliance_attestation` output that downstream OSCAL evidence pipelines cite as proof.
 
-Module defaults also target public-safety SaaS. Where CJIS v6.0 exceeds FedRAMP High (agency-managed CMKs, 1-year audit retention with Object Lock, AAL2 MFA patterns), I default to the stricter rule.
+Module defaults also target public-safety SaaS. Where CJIS v6.1 exceeds FedRAMP High (agency-managed CMKs, 1-year audit retention with Object Lock, AAL2 MFA patterns), I default to the stricter rule.
 
 ## Architecture Overview
 
@@ -37,13 +37,13 @@ Each module is self-contained (`main.tf`, `variables.tf`, `outputs.tf`, `version
 
 Composite across the planned module set. Each module's `README.md` carries the precise control-to-resource mapping for that module.
 
-| NIST 800-53 Rev 5 | FedRAMP High | CJIS v6.0 | What It Enforces |
+| NIST 800-53 Rev 5 | FedRAMP High | CJIS v6.1 | What It Enforces |
 |---|:---:|:---:|---|
-| AC-2, AC-3, AC-6 | Yes | 5.5.x delta | `iam-hardening`: group-based access, RequireMFA deny gate, tiered grants, CJI-user tagging |
+| AC-2, AC-3, AC-6 | Yes | P1 — quarterly CJI access-review delta | `iam-hardening`: group-based access, RequireMFA deny gate, tiered grants, CJI-user tagging |
 | IA-2 (1)(2), IA-5 | Yes | IA-2 AAL2 delta | `iam-hardening`: RequireMFA deny gate (BoolIfExists), MFA-required auditor role trust, account password policy (max age / complexity) |
-| SC-12, SC-13, SC-28 | Yes | 5.10.1.2.x delta | `kms-key-management` + `s3-compliant-bucket`: agency-managed CMK only, FIPS endpoints, automatic rotation, SSE-KMS on storage |
+| SC-12, SC-13, SC-28 | Yes | agency-managed CMK delta (SC-28) | `kms-key-management` + `s3-compliant-bucket`: agency-managed CMK only, FIPS endpoints, automatic rotation, SSE-KMS on storage |
 | SC-7, SC-7(5), AC-4 | Yes | 5.10 boundary | `vpc-boundary`: public/private subnets, SG+NACL least privilege, flow logs, VPC endpoints for S3/KMS |
-| AU-2, AU-6, AU-9, AU-12 | Yes | 5.4.x (1-yr) | `cloudtrail-multi-region`: org trail, KMS-encrypted log archive, log integrity validation, S3 Object Lock |
+| AU-2, AU-6, AU-9, AU-12 | Yes | AU-11 1-year retention delta | `cloudtrail-multi-region`: org trail, KMS-encrypted log archive, log integrity validation, S3 Object Lock |
 | CA-7, CM-3, CM-6 | Yes | - | `config-recorder` + NIST 800-53 conformance pack; required-tag enforcement via `merge()` |
 | SI-4, RA-5, SI-4(2) | Yes | - | `guardduty-eventbridge`: detection + EventBridge → SNS pipeline |
 
@@ -67,15 +67,15 @@ CI gates run on every PR. Module outputs produce JSON-ready attestation. Consume
 - **API-driven evidence:** `terraform output -json compliance_attestation` is the canonical evidence endpoint. Consumer flagships read it programmatically.
 - **30-day vs 90-day review window:** Modules produce machine-readable artifacts on every apply. The 30-day continuous monitoring SLA window applies, not the 90-day manual review window. Each module's apply timestamp is the evidence freshness anchor.
 
-## CJIS v6.0 Relevance
+## CJIS v6.1 Relevance
 
-Module defaults target CJIS v6.0 where it exceeds FedRAMP High. The three primary deltas:
+Module defaults target CJIS v6.1 where it exceeds FedRAMP High. The three primary deltas:
 
 - **Agency-managed CMK only (SC-12, SC-13, SC-28).** Every module that touches encryption uses a customer-managed `aws_kms_key` with an explicit key policy. AWS-managed keys are not exposed as a configuration option. The module won't accept them. GovCloud FIPS 140-2/3 boundary differences are annotated in `kms-key-management/README.md` rather than deployed (single-user commercial AWS access).
 - **CJI-user tagging convention (AC-2 delta).** `iam-hardening` exposes a `cji_user_role` tag on human-assumable roles that downstream quarterly access review automation can filter on. Required tags are layered on top of consumer tags via `merge(var.tags, local.required_tags)` so they cannot be suppressed.
 - **1-year minimum audit retention with weekly review (AU-6 delta).** `cloudtrail-multi-region` sets `s3_object_lock_retention_days >= 365` as a variable default, with plan-time validation enforcing `>= 365` when `environment == "prod"` using the boolean implication `(env != "prod") ∨ (retention >= 365)`. Weekly-review evidence tags are emitted in the attestation output.
 
-CJIS v6.0 (published Dec 27, 2024) aligns to NIST 800-53 Rev 5. Default audit baseline from April 1, 2026. Priority 2-4 fully enforceable Oct 1, 2027 (timing varies by state CSA).
+CJIS Security Policy v6.1 (released June 25, 2026) is the current policy, aligned with NIST 800-53 Rev 5. v6.x has been the default audit baseline since April 1, 2026 (v5.9.5 sunset March 31, 2026); modernized Priority 2-4 controls are fully enforceable Oct 1, 2027 (timing varies by state CSA).
 
 ## Sample Evidence Output
 
@@ -85,7 +85,7 @@ A representative `compliance_attestation` output from the `iam-hardening` module
 {
   "module": "iam-hardening",
   "module_version": "1.1.0",
-  "framework_targets": ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.0"],
+  "framework_targets": ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.1"],
   "controls_satisfied": ["AC-2", "AC-3", "AC-6", "IA-2(1)", "IA-2(2)", "IA-5"],
   "environment": "dev",
   "required_compliance_scope": "fedramp-high",
@@ -188,7 +188,7 @@ Modules land incrementally as the corresponding lab in the AWS Fundamentals Labs
 - [`oscal-evidence-pipeline`](https://github.com/0xBahalaNa/oscal-evidence-pipeline): consumes `compliance_attestation` output as OSCAL observation evidence
 - [NIST SP 800-53 Rev 5](https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final)
 - [FedRAMP High Baseline](https://www.fedramp.gov/baselines/)
-- [CJIS Security Policy v6.0](https://www.fbi.gov/services/cjis/cjis-security-policy-resource-center)
+- [CJIS Security Policy v6.1](https://le.fbi.gov/cjis-division/cjis-security-policy-resource-center)
 - [Terraform Registry: AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
 - [Open Policy Agent: Rego Policy Language](https://www.openpolicyagent.org/docs/latest/policy-language/)
 

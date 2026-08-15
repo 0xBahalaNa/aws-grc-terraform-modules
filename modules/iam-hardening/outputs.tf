@@ -33,7 +33,7 @@ output "compliance_attestation" {
   value = {
     module                    = "iam-hardening"
     module_version            = local.required_tags.module_version
-    framework_targets         = ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.0"]
+    framework_targets         = ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.1"]
     controls_satisfied        = ["AC-2", "AC-3", "AC-6", "IA-2(1)", "IA-2(2)", "IA-5"]
     environment               = var.environment
     required_compliance_scope = var.required_compliance_scope

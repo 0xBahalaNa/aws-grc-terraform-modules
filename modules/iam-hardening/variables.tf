@@ -25,7 +25,7 @@ variable "required_compliance_scope" {
 }
 
 variable "cji_users_enabled" {
-  description = "Enforce the CJIS v6.0 AC-2 delta CJI-user tagging convention. When true, human-assumable roles carry a `cji_user_role` tag that downstream quarterly access-review automation can filter on."
+  description = "Enforce the CJIS v6.1 AC-2 delta CJI-user tagging convention. When true, human-assumable roles carry a `cji_user_role` tag that downstream quarterly access-review automation can filter on."
   type        = bool
   default     = false
 }
