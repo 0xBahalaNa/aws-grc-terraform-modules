@@ -39,7 +39,7 @@ Composite across the planned module set. Each module's `README.md` carries the p
 
 | NIST 800-53 Rev 5 | FedRAMP High | CJIS v6.1 | What It Enforces |
 |---|:---:|:---:|---|
-| AC-2, AC-3, AC-6 | Yes | P1 — quarterly CJI access-review delta | `iam-hardening`: group-based access, RequireMFA deny gate, tiered grants, CJI-user tagging |
+| AC-2, AC-3, AC-6 | Yes | P1: quarterly CJI access-review delta | `iam-hardening`: group-based access, RequireMFA deny gate, tiered grants, CJI-user tagging |
 | IA-2 (1)(2), IA-5 | Yes | IA-2 AAL2 delta | `iam-hardening`: RequireMFA deny gate (BoolIfExists), MFA-required auditor role trust, account password policy (max age / complexity) |
 | SC-12, SC-13, SC-28 | Yes | agency-managed CMK delta (SC-28) | `kms-key-management` + `s3-compliant-bucket`: agency-managed CMK only, FIPS endpoints, automatic rotation, SSE-KMS on storage |
 | SC-7, SC-7(5), AC-4 | Yes | 5.10 boundary | `vpc-boundary`: public/private subnets, SG+NACL least privilege, flow logs, VPC endpoints for S3/KMS |

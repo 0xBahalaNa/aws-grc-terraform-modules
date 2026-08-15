@@ -2,7 +2,7 @@
 
 Lab 2 module (v1.2.1). Evidence bucket aligned with NIST 800-53 Rev 5 **SC-28 / SC-28(1)**, **SC-13**, **SC-8**, **AC-3 / AC-6**, **AU-11**, **AU-9**, **SI-7 / CP-9**, and **CM-6**, with CJIS v6.1 deltas (agency-managed CMK; 1-year Object Lock retention).
 
-> **Status: v1.2.1 implemented.** SSE-KMS with a required customer-managed CMK, Object Lock Governance (365-day floor), versioning, bucket-level Block Public Access, TLS-only bucket policy, optional server access logging to a consumer-supplied bucket, and one noncurrent-version lifecycle rule. Companion Console walkthrough: [luigicarpio.dev/blog/2026-07-aws-lab-2-s3-compliant-bucket](https://luigicarpio.dev/blog/2026-07-aws-lab-2-s3-compliant-bucket). OPA/Rego policy bundle is **deferred** to the chassis minor — not in this module.
+> **Status: v1.2.1 implemented.** SSE-KMS with a required customer-managed CMK, Object Lock Governance (365-day floor), versioning, bucket-level Block Public Access, TLS-only bucket policy, optional server access logging to a consumer-supplied bucket, and one noncurrent-version lifecycle rule. Companion Console walkthrough: [luigicarpio.dev/blog/2026-07-aws-lab-2-s3-compliant-bucket](https://luigicarpio.dev/blog/2026-07-aws-lab-2-s3-compliant-bucket). OPA/Rego policy bundle is **deferred** to the chassis minor: not in this module.
 
 ## What This Module Creates
 
@@ -20,31 +20,31 @@ Lab 2 module (v1.2.1). Evidence bucket aligned with NIST 800-53 Rev 5 **SC-28 / 
 
 **Scope limits (honest framing):**
 
-- **The access-logs bucket is not created here.** S3 log delivery won't write to a destination with SSE-KMS or Object Lock, and this bucket has both. AU-9 coverage means "logging is wired to your log bucket" — bring your own.
+- **The access-logs bucket is not created here.** S3 log delivery won't write to a destination with SSE-KMS or Object Lock, and this bucket has both. AU-9 coverage means "logging is wired to your log bucket": bring your own.
 
 - **`kms_cmk_arn` validation checks shape, not ownership.** The regex requires a `key/` ARN (aliases fail, GovCloud passes) but doesn't check `KeyManager`, so an AWS-managed key ARN slips through. See [variable validation](https://developer.hashicorp.com/terraform/language/block/variable#custom-validation-rules) and [key vs alias ARNs](https://docs.aws.amazon.com/kms/latest/developerguide/find-cmk-id-arn.html).
 
 - **Object Lock runs in GOVERNANCE mode.** Retention can be shortened by anyone with `s3:BypassGovernanceRetention`; COMPLIANCE can't be, even by root. See [retention modes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock-overview.html).
 
-- **`manage_account_defaults` goes true on exactly one module call.** Account-level Block Public Access is one resource per account; defaults to `false`. EBS encryption-by-default was dropped — it forces the AWS-managed `aws/ebs` key, which this repo forbids. EBS CMK is Lab 7.
+- **`manage_account_defaults` goes true on exactly one module call.** Account-level Block Public Access is one resource per account; defaults to `false`. EBS encryption-by-default was dropped: it forces the AWS-managed `aws/ebs` key, which this repo forbids. EBS CMK is Lab 7.
 
 ## Controls Addressed
 
 | NIST 800-53 Rev 5 | FedRAMP High | CJIS v6.1 | How This Module Enforces It |
 |---|:---:|:---:|---|
-| SC-28 / SC-28(1) (Protection of Information at Rest) | Yes | P2 — agency-managed CMK delta | SSE-KMS default encryption; required `key/` CMK ARN; `blocked_encryption_types = ["SSE-C"]` |
-| SC-13 (Cryptographic Protection) | Yes | P2 — agency-managed CMK delta | Customer-managed CMK only. GovCloud `arn:aws-us-gov:kms:…:key/…` passes the regex (FIPS endpoints annotated, not deployed) |
-| SC-8 (Transmission Confidentiality and Integrity) | Yes | P2 — encryption in transit | TLS-only bucket policy: Deny when `aws:SecureTransport` is `"false"` |
+| SC-28 / SC-28(1) (Protection of Information at Rest) | Yes | P2: agency-managed CMK delta | SSE-KMS default encryption; required `key/` CMK ARN; `blocked_encryption_types = ["SSE-C"]` |
+| SC-13 (Cryptographic Protection) | Yes | P2: agency-managed CMK delta | Customer-managed CMK only. GovCloud `arn:aws-us-gov:kms:…:key/…` passes the regex (FIPS endpoints annotated, not deployed) |
+| SC-8 (Transmission Confidentiality and Integrity) | Yes | P2: encryption in transit | TLS-only bucket policy: Deny when `aws:SecureTransport` is `"false"` |
 | AC-3 / AC-6 (Access Enforcement / Least Privilege) | Yes | P1 | All four Block Public Access flags hardcoded; account-level BPA is an optional singleton |
-| AU-11 (Audit Record Retention) | Yes | P4 — 1-yr retention delta | Object Lock GOVERNANCE default 365 days; lifecycle expiration cannot undercut it |
+| AU-11 (Audit Record Retention) | Yes | P4: 1-yr retention delta | Object Lock GOVERNANCE default 365 days; lifecycle expiration cannot undercut it |
 | AU-9 (Protection of Audit Information) | Yes | P2 | Server access logging to a consumer-supplied destination (count-gated) |
 | SI-7 / CP-9 (Integrity / System Backup) | Yes | P1 / P2 | Versioning forced on; noncurrent versions transition to GLACIER then expire |
 | CM-6 (Configuration Settings) | Yes | P1 | Required tags via `merge(var.tags, local.required_tags)`; fail-closed defaults |
 
 ## Requirements
 
-- Terraform >= 1.9 — cross-variable validation (`logs_destination_bucket` when logging is on; `noncurrent_expiration_days` must not undercut Object Lock). See [cross-object validation](https://developer.hashicorp.com/terraform/language/block/variable#cross-object-validation-conditions).
-- AWS provider >= 6.22.0 — `blocked_encryption_types` on the encryption resource (the console's BlockedEncryptionTypes: SSE-C).
+- Terraform >= 1.9: cross-variable validation (`logs_destination_bucket` when logging is on; `noncurrent_expiration_days` must not undercut Object Lock). See [cross-object validation](https://developer.hashicorp.com/terraform/language/block/variable#cross-object-validation-conditions).
+- AWS provider >= 6.22.0: `blocked_encryption_types` on the encryption resource (the console's BlockedEncryptionTypes: SSE-C).
 
 ## Compliance Attestation Output
 
@@ -84,7 +84,7 @@ module "evidence_bucket" {
 }
 ```
 
-Pin `?ref=` to a tagged release. `kms_cmk_arn` must be a customer-managed `key/` ARN — not `alias/aws/s3`.
+Pin `?ref=` to a tagged release. `kms_cmk_arn` must be a customer-managed `key/` ARN, not `alias/aws/s3`.
 
 ## Examples
 
