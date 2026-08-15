@@ -39,10 +39,10 @@ Composite across the planned module set. Each module's `README.md` carries the p
 
 | NIST 800-53 Rev 5 | FedRAMP High | CJIS v6.1 | What It Enforces |
 |---|:---:|:---:|---|
-| AC-2, AC-3, AC-6 | Yes | P1: quarterly CJI access-review delta | `iam-hardening`: group-based access, RequireMFA deny gate, tiered grants, CJI-user tagging |
+| AC-2, AC-3, AC-6 | Yes | P1: need-to-know granularity delta (annual review cadence matches baseline, AC-2(j)) | `iam-hardening`: group-based access, RequireMFA deny gate, tiered grants, CJI-user tagging |
 | IA-2 (1)(2), IA-5 | Yes | IA-2 AAL2 delta | `iam-hardening`: RequireMFA deny gate (BoolIfExists), MFA-required auditor role trust, account password policy (max age / complexity) |
 | SC-12, SC-13, SC-28 | Yes | agency-managed CMK delta (SC-28) | `kms-key-management` + `s3-compliant-bucket`: agency-managed CMK only, FIPS endpoints, automatic rotation, SSE-KMS on storage |
-| SC-7, SC-7(5), AC-4 | Yes | 5.10 boundary | `vpc-boundary`: public/private subnets, SG+NACL least privilege, flow logs, VPC endpoints for S3/KMS |
+| SC-7, SC-7(5), AC-4 | Yes | P1 boundary | `vpc-boundary`: public/private subnets, SG+NACL least privilege, flow logs, VPC endpoints for S3/KMS |
 | AU-2, AU-6, AU-9, AU-12 | Yes | AU-11 1-year retention delta | `cloudtrail-multi-region`: org trail, KMS-encrypted log archive, log integrity validation, S3 Object Lock |
 | CA-7, CM-3, CM-6 | Yes | - | `config-recorder` + NIST 800-53 conformance pack; required-tag enforcement via `merge()` |
 | SI-4, RA-5, SI-4(2) | Yes | - | `guardduty-eventbridge`: detection + EventBridge → SNS pipeline |
@@ -72,7 +72,7 @@ CI gates run on every PR. Module outputs produce JSON-ready attestation. Consume
 Module defaults target CJIS v6.1 where it exceeds FedRAMP High. The three primary deltas:
 
 - **Agency-managed CMK only (SC-12, SC-13, SC-28).** Every module that touches encryption uses a customer-managed `aws_kms_key` with an explicit key policy. AWS-managed keys are not exposed as a configuration option. The module won't accept them. GovCloud FIPS 140-2/3 boundary differences are annotated in `kms-key-management/README.md` rather than deployed (single-user commercial AWS access).
-- **CJI-user tagging convention (AC-2 delta).** `iam-hardening` exposes a `cji_user_role` tag on human-assumable roles that downstream quarterly access review automation can filter on. Required tags are layered on top of consumer tags via `merge(var.tags, local.required_tags)` so they cannot be suppressed.
+- **CJI-user tagging convention (AC-2 delta).** `iam-hardening` exposes a `cji_user_role` tag on human-assumable roles that downstream access review automation can filter on. Review cadence itself is annual (AC-2(j)), matching FedRAMP High — the CJIS-specific value is need-to-know granularity, not a shorter clock. Required tags are layered on top of consumer tags via `merge(var.tags, local.required_tags)` so they cannot be suppressed.
 - **1-year minimum audit retention with weekly review (AU-6 delta).** `cloudtrail-multi-region` sets `s3_object_lock_retention_days >= 365` as a variable default, with plan-time validation enforcing `>= 365` when `environment == "prod"` using the boolean implication `(env != "prod") ∨ (retention >= 365)`. Weekly-review evidence tags are emitted in the attestation output.
 
 CJIS Security Policy v6.1 (released June 25, 2026) is the current policy, aligned with NIST 800-53 Rev 5. v6.x has been the default audit baseline since April 1, 2026 (v5.9.5 sunset March 31, 2026); modernized Priority 2-4 controls are fully enforceable Oct 1, 2027 (timing varies by state CSA).
