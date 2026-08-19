@@ -24,7 +24,7 @@ Lab 1 module (v1.1.1). IAM baseline aligned with NIST 800-53 Rev 5 **AC-2 / AC-3
 
 | NIST 800-53 Rev 5 | FedRAMP High | CJIS v6.1 | How This Module Enforces It |
 |---|---|:---:|---|
-| AC-2 (Account Management) | Yes | P1: need-to-know granularity delta (annual review cadence, AC-2(j) — matches baseline) | Group-based access model; optional `cji_user_role` tag on human-assumable roles |
+| AC-2 (Account Management) | Yes | P1: need-to-know granularity delta (annual review cadence, AC-2(j), matches baseline) | Group-based access model; optional `cji_user_role` tag on human-assumable roles |
 | AC-3 (Access Enforcement) | Yes | P1 | Role trust policies; RequireMFA deny on group members |
 | AC-6 (Least Privilege) | Yes | P1 | Tiered group grants (admin/dev/auditor); MFA gate on all group permissions |
 | IA-2(1)(2) (MFA) | Yes | P1: AAL2 phishing-resistant MFA delta | `BoolIfExists` on `aws:MultiFactorAuthPresent`; auditor role trust requires MFA |
