@@ -2,7 +2,7 @@
 ![CJIS](https://img.shields.io/badge/CJIS-Security%20Policy%20v6.1-cc0000?style=flat)
 ![FedRAMP](https://img.shields.io/badge/FedRAMP-High%20Baseline-0071bc?style=flat)
 ![NIST 800-53](https://img.shields.io/badge/NIST-800--53%20Rev%205-004990?style=flat)
-![Terraform](https://img.shields.io/badge/Terraform-%E2%89%A5%201.6-7B42BC?style=flat)
+![Terraform](https://img.shields.io/badge/Terraform-%E2%89%A5%201.9-7B42BC?style=flat)
 ![OPA](https://img.shields.io/badge/OPA-%E2%89%A5%200.60-7D4698?style=flat)
 
 # AWS GRC Terraform Modules
@@ -11,7 +11,7 @@ I build reusable Terraform modules that implement FedRAMP High and CJIS v6.1 bas
 
 This repo is the Terraform half of the AWS Fundamentals Labs Curriculum: a 10-lab series where every lab pairs a Console-first walkthrough on [`luigicarpio.dev/blog`](https://luigicarpio.dev/blog) with a matching module here. The pairing keeps the IaC defensible at the AWS-service level (CGE-P Domain 2 alignment) without abandoning click-path fluency.
 
-> **Status:** v1.0 chassis under construction. **`iam-hardening` (Lab 1) v1.1.0 implemented** in `modules/iam-hardening/`: password policy, RequireMFA, baseline groups, Lab* roles, Access Analyzer, self-verifying `compliance_attestation`. Other modules land as their corresponding labs ship.
+> **Status:** v1.0 chassis under construction. **`iam-hardening` (Lab 1) v1.1.1 implemented** in `modules/iam-hardening/`: password policy, RequireMFA, baseline groups, Lab* roles, Access Analyzer, self-verifying `compliance_attestation`. Other modules land as their corresponding labs ship.
 
 ## Why This Exists
 
@@ -103,8 +103,8 @@ Each per-control boolean is **computed from actual deployed resource state** (e.
 
 ## Requirements
 
-- Terraform >= 1.6
-- AWS provider >= 5.x
+- Terraform >= 1.9
+- AWS provider >= 5.0 for `iam-hardening` and >= 6.22.0 for `s3-compliant-bucket`
 - OPA / conftest >= 0.60 (for `conftest test` CI gate)
 - tfsec >= 1.28
 - checkov >= 3.x
@@ -117,7 +117,7 @@ Each module is consumed via a standard Terraform `module` block:
 
 ```hcl
 module "iam_baseline" {
-  source = "git::https://github.com/0xBahalaNa/aws-grc-terraform-modules.git//modules/iam-hardening?ref=v1.1.0"
+  source = "git::https://github.com/0xBahalaNa/aws-grc-terraform-modules.git//modules/iam-hardening?ref=v1.1.1"
 
   environment               = "prod"
   project_tag               = "compliance-as-code"
@@ -137,7 +137,7 @@ Pin the `?ref=` to a tagged release for reproducible builds. Each module will sh
 ```
 aws-grc-terraform-modules/
 ├── modules/
-│   ├── iam-hardening/             # Lab 1: v1.1.0 implemented (password policy, RequireMFA, groups, roles, Access Analyzer)
+│   ├── iam-hardening/             # Lab 1: v1.1.1 implemented (password policy, RequireMFA, groups, roles, Access Analyzer)
 │   ├── s3-compliant-bucket/       # Lab 2: v1.2.1 implemented (SSE-KMS, Object Lock, TLS-only, attestation)
 │   ├── vpc-boundary/              # planned: Lab 3 (CJI enclave boundary, SC-7)
 │   ├── cloudtrail-multi-region/   # planned: Lab 4 (org trail, log archive, AU-*)
