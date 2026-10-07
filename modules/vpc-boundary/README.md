@@ -23,6 +23,8 @@ Lab 3 module (v1.3.0). CJI enclave boundary aligned with NIST 800-53 Rev 5 **SC-
 
 - **One zonal NAT, in public-a.** The provider can build a regional NAT (`availability_mode = "regional"`). I set `zonal` because that is what the console build proved. HA is a second NAT in public-b. I did not build it. If AZ a is down, private egress is down with it.
 
+- **The four chain security groups never reach the internet.** None of them allow egress to `0.0.0.0/0`, so none of them use the NAT. The NAT is for a workload that brings its own egress rule. In the console lab, temporary helper security groups (egress 443 to `0.0.0.0/0`) let the test instances reach Session Manager through the NAT. Those helper groups are not in this module.
+
 - **The flow-log bucket is not created here.** Pass `flow_logs_bucket_arn`. I expect that bucket to come from [`s3-compliant-bucket` v1.2.1](../s3-compliant-bucket/README.md) (SSE-KMS with a customer-managed CMK, Object Lock GOVERNANCE, TLS-only policy). v1.2.1 does not grant `delivery.logs.amazonaws.com`. The statements in the next section have to be on the bucket before apply. I did not ship a v1.2.2 toggle: this module never calls the bucket module, and the lab account already carries the grant on the existing bucket.
 
 - **A hand-added delivery grant on that v1.2.1 bucket drifts.** The bucket policy is `aws_s3_bucket_policy.this` in `s3-compliant-bucket`. There is no input for extra statements and no `ignore_changes`. The next apply of the bucket stack reverts the policy to `DenyInsecureTransport` only. Flow-log delivery stops. `flow_logs_to_s3` still reports true, because it reads the flow log resource, not the bucket policy.
