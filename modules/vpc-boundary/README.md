@@ -35,6 +35,8 @@ Lab 3 module (v1.3.0). CJI enclave boundary aligned with NIST 800-53 Rev 5 **SC-
 
 - **The VPC default security group is unused.** I do not strip its rules. Checkov `CKV2_AWS_12` flags that. Public subnets stay on the VPC default NACL. The deny-by-default NACL is the private one. Inbound rule 110 allows TCP 1024-65535 from `0.0.0.0/0` so NAT replies have a way back. That range includes 3389, which is why checkov `CKV_AWS_231` fires. No security group in this module allows 3389.
 
+- **Outbound NACL rule 120 from the console was dropped on purpose.** It was TCP 1024-65535 to `0.0.0.0/0`. Replies to traffic inside the VPC already match outbound rule 100, and nothing outside the VPC can start a connection to the private subnets.
+
 - **`public-alb-443`, `app-from-alb`, and `data-from-app` are not attached to an ENI here.** This module does not create instances. Checkov `CKV2_AWS_5` flags those three. `vpce-443` is attached to the Interface endpoints.
 
 - **Rule 50 denies SSH from `0.0.0.0/0`, including hosts inside the VPC.** Nobody SSHes the private tier. Session Manager is the admin path, and this module does not build it.
