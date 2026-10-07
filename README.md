@@ -99,7 +99,7 @@ A representative `compliance_attestation` output from the `iam-hardening` module
 }
 ```
 
-Each per-control boolean is **computed from actual deployed resource state** (e.g., `auditor_role_mfa_trust_enforced` parses `aws_iam_role.this["LabCrossAccountAuditor"].assume_role_policy` for the `aws:MultiFactorAuthPresent` condition). The module does not claim a control is satisfied. It computes whether the deployed state matches the control's requirements. Per-module `examples/<name>/` consumer scenarios are planned (v1.3.0 roadmap).
+Each per-control boolean is **computed from actual deployed resource state** (e.g., `auditor_role_mfa_trust_enforced` parses `aws_iam_role.this["LabCrossAccountAuditor"].assume_role_policy` for the `aws:MultiFactorAuthPresent` condition). The module does not claim a control is satisfied. It computes whether the deployed state matches the control's requirements. Each module ships a runnable consumer under `examples/basic/`.
 
 ## Requirements
 
@@ -130,7 +130,7 @@ output "iam_compliance_evidence" {
 }
 ```
 
-Pin the `?ref=` to a tagged release for reproducible builds. Each module will ship a complete consumer example under `examples/<module-name>/` (v1.3.0 roadmap).
+Pin the `?ref=` to a tagged release for reproducible builds. Each module ships a consumer example under `modules/<module-name>/examples/basic/`.
 
 ## Repository Structure
 
@@ -174,8 +174,8 @@ Modules land incrementally as the corresponding lab in the AWS Fundamentals Labs
 
 - v1.0: chassis ships (CI, OPA framework, module template, terraform-docs gate)
 - v1.1: `iam-hardening` (Lab 1) shipped
-- v1.2: `s3-compliant-bucket` (Lab 2)
-- v1.3: `vpc-boundary` (Lab 3)
+- v1.2: `s3-compliant-bucket` (Lab 2) shipped
+- v1.3: `vpc-boundary` (Lab 3) shipped
 - v1.4: `cloudtrail-multi-region` (Lab 4)
 - v2.0: full Lab 1-8 module set; opportunistic on Labs 5-8 per Sprint Plan
 - GovCloud variant set when account access is available: FIPS 140-3 KMS, agency-managed key isolation patterns
