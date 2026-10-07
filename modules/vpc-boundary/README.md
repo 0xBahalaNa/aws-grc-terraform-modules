@@ -137,9 +137,9 @@ The private-route guardrail is structural. A `validation` block would be the wro
 ## GovCloud / CJIS
 
 - Endpoint service names change with the region. This module builds `com.amazonaws.<region>.s3` (and `.kms`, `.secretsmanager`) from the provider region. In `us-gov-west-1` that is `com.amazonaws.us-gov-west-1.kms`. I do not hardcode `us-east-1`.
-- Private DNS suffix in GovCloud is `amazonaws.us-gov`, not `amazonaws.com`. Private DNS is still the `private_dns_enabled = true` flag. A commercial `nslookup kms.us-east-1.amazonaws.com` is the wrong test there.
+- The DNS suffix stays `amazonaws.com` in GovCloud. Only the region in the hostname changes: `kms.us-gov-west-1.amazonaws.com`. Private DNS is still the `private_dns_enabled = true` flag. A commercial `nslookup kms.us-east-1.amazonaws.com` is the wrong test there.
 - `flow_logs_bucket_arn` accepts `arn:aws-us-gov:s3:::...` (`[a-z-]*` after `aws`). The delivery statements in GovCloud use the `aws-us-gov` partition on both the bucket ARN and the `aws:SourceArn`.
-- Commercial partitions have a separate Interface service for `kms-fips`. GovCloud's standard endpoints are FIPS. I annotated that. I did not add a second endpoint.
+- KMS has a separate FIPS endpoint in both partitions: `kms-fips.us-east-1.amazonaws.com` in commercial and `kms-fips.us-gov-west-1.amazonaws.com` in GovCloud (Interface service `com.amazonaws.us-gov-west-1.kms-fips`). CJIS in-transit FIPS points there. This module creates the standard `kms` endpoint only. I did not add a second one.
 - Shield Advanced is not in every GovCloud partition. That only matters for the shed WAF layer, which this module does not build.
 - Anything that terminates CJI outside this VPC (a laptop, a SaaS) needs its own SC-7 story. This module is the enclave, not that path.
 
