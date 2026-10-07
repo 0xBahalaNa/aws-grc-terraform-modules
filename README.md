@@ -104,7 +104,7 @@ Each per-control boolean is **computed from actual deployed resource state** (e.
 ## Requirements
 
 - Terraform >= 1.9
-- AWS provider >= 5.0 for `iam-hardening` and >= 6.22.0 for `s3-compliant-bucket`
+- AWS provider >= 5.0 for `iam-hardening`, >= 6.22.0 for `s3-compliant-bucket`, and >= 6.24.0 for `vpc-boundary`
 - OPA / conftest >= 0.60 (for `conftest test` CI gate)
 - tfsec >= 1.28
 - checkov >= 3.x
@@ -139,7 +139,7 @@ aws-grc-terraform-modules/
 ├── modules/
 │   ├── iam-hardening/             # Lab 1: v1.1.1 implemented (password policy, RequireMFA, groups, roles, Access Analyzer)
 │   ├── s3-compliant-bucket/       # Lab 2: v1.2.1 implemented (SSE-KMS, Object Lock, TLS-only, attestation)
-│   ├── vpc-boundary/              # planned: Lab 3 (CJI enclave boundary, SC-7)
+│   ├── vpc-boundary/              # Lab 3: v1.3.0 implemented (CJI enclave, SC-7, flow logs, attestation)
 │   ├── cloudtrail-multi-region/   # planned: Lab 4 (org trail, log archive, AU-*)
 │   ├── config-recorder/           # planned: Lab 5 (Config + custom rules, CA-7, CM-3/6)
 │   ├── security-hub/              # planned: Lab 6 (Security Hub posture)
