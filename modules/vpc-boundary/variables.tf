@@ -8,13 +8,13 @@ variable "cidr_block" {
   default     = "10.50.0.0/16"
   nullable    = false
 
-  # cidrsubnet() below rejects a string that is not a real network address.
-  # endswith "/16" is the prefix-length floor. Shape-only on purpose: the
-  # same idea as Lab 2's ARN regex.
+  # can(cidrsubnet(...)) means the string parses as a CIDR. endswith "/16"
+  # is the prefix check. "10.50.1.0/16" (host bits set) and "2001:db8::/16"
+  # (IPv6) both pass. Shape-only on purpose: the same idea as Lab 2's ARN regex.
   # https://developer.hashicorp.com/terraform/language/functions/cidrsubnet
   validation {
     condition     = can(cidrsubnet(var.cidr_block, 8, 12)) && endswith(var.cidr_block, "/16")
-    error_message = "cidr_block must be an IPv4 /16 network address (example: 10.50.0.0/16)."
+    error_message = "cidr_block must parse as a CIDR and end in /16 (example: 10.50.0.0/16)."
   }
 }
 

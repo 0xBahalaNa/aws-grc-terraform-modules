@@ -132,10 +132,8 @@ resource "aws_nat_gateway" "this" {
   depends_on = [aws_internet_gateway.this]
 }
 
-# Route tables have no inline route blocks. A Gateway endpoint adds its own
-# prefix-list route to each table. Inline routes plus that managed route
-# fight, and inline routes cannot be combined with aws_route. The 0.0.0.0/0
-# routes are separate aws_route resources below.
+# Route tables have no inline route blocks. Inline routes cannot be combined
+# with aws_route. The 0.0.0.0/0 routes are separate aws_route resources below.
 # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.this.id

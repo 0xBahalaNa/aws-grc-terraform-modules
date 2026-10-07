@@ -23,7 +23,9 @@ Lab 3 module (v1.3.0). CJI enclave boundary aligned with NIST 800-53 Rev 5 **SC-
 
 - **One zonal NAT, in public-a.** The provider can build a regional NAT (`availability_mode = "regional"`). I set `zonal` because that is what the console build proved. HA is a second NAT in public-b. I did not build it. If AZ a is down, private egress is down with it.
 
-- **The flow-log bucket is not created here.** Pass `flow_logs_bucket_arn`. I expect that bucket to come from [`s3-compliant-bucket` v1.2.1](../s3-compliant-bucket/README.md) (SSE-KMS with a customer-managed CMK, Object Lock GOVERNANCE, TLS-only policy). v1.2.1 does not grant `delivery.logs.amazonaws.com`. You add the statements in the next section. I did not ship a v1.2.2 toggle: this module never calls the bucket module, and the lab account already carries the grant on the existing bucket.
+- **The flow-log bucket is not created here.** Pass `flow_logs_bucket_arn`. I expect that bucket to come from [`s3-compliant-bucket` v1.2.1](../s3-compliant-bucket/README.md) (SSE-KMS with a customer-managed CMK, Object Lock GOVERNANCE, TLS-only policy). v1.2.1 does not grant `delivery.logs.amazonaws.com`. The statements in the next section have to be on the bucket before apply. I did not ship a v1.2.2 toggle: this module never calls the bucket module, and the lab account already carries the grant on the existing bucket.
+
+- **A hand-added delivery grant on that v1.2.1 bucket drifts.** The bucket policy is `aws_s3_bucket_policy.this` in `s3-compliant-bucket`. There is no input for extra statements and no `ignore_changes`. The next apply of the bucket stack reverts the policy to `DenyInsecureTransport` only. Flow-log delivery stops. `flow_logs_to_s3` still reports true, because it reads the flow log resource, not the bucket policy.
 
 - **Names are fixed** (`rt-private`, `data-from-app`, and the rest). The walkthrough's verify commands filter on those names. A second copy of this module in the same account and region will collide.
 
@@ -41,9 +43,9 @@ NAT is about $0.045/hr plus data. Each Interface endpoint is about $0.01/hr per 
 
 ## Flow log delivery grant
 
-`s3-compliant-bucket` v1.2.1's bucket policy is the TLS deny only. Flow Logs will create either way, then fail delivery, unless the bucket and the CMK both allow `delivery.logs.amazonaws.com`.
+`s3-compliant-bucket` v1.2.1's bucket policy is the TLS deny only. The bucket and the CMK both have to allow `delivery.logs.amazonaws.com` before apply.
 
-Keep the existing `DenyInsecureTransport` statement. Add the two bucket statements under it. Do not let the console attach a flow-log policy for you: that write replaces the whole bucket policy and drops the TLS deny.
+Keep the existing `DenyInsecureTransport` statement and add the two bucket statements under it before apply. `CreateFlowLogs` writes the bucket policy itself, and Terraform calls that API. If the caller owns the bucket and has `s3:GetBucketPolicy` and `s3:PutBucketPolicy` (normal for Terraform admin credentials), AWS attaches its own flow-log policy, and that policy overwrites any existing policy, including `DenyInsecureTransport`. Without those two permissions, creating the flow log fails.
 
 Bucket policy, two statements. Swap `BUCKET`, `ACCOUNT_ID`, and `REGION`. In GovCloud the ARNs use the `aws-us-gov` partition (`arn:aws-us-gov:s3:::...`, `arn:aws-us-gov:logs:...`).
 
