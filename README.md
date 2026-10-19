@@ -7,7 +7,7 @@
 
 # AWS GRC Terraform Modules
 
-I build reusable Terraform modules that implement FedRAMP High and CJIS v6.1 baselines on AWS. Each module is one self-contained compliance unit (IAM hardening, KMS CMK, S3 with SSE/Object Lock, VPC enclave boundary, CloudTrail multi-region, AWS Config recorder, Security Hub, GuardDuty). Each ships with NIST 800-53 Rev 5 control mappings, OPA/Rego policy tests, and tfsec/checkov gates wired into CI.
+I build reusable Terraform modules that implement FedRAMP High and CJIS v6.1 baselines on AWS. Each module is one self-contained compliance unit (IAM hardening, KMS CMK, S3 with SSE/Object Lock, VPC enclave boundary, CloudTrail multi-region, AWS Config recorder, Security Hub, GuardDuty). Each ships with NIST 800-53 Rev 5 control mappings and OPA/Rego policy tests. tfsec and checkov gates stay planned.
 
 This repo is the Terraform half of the AWS Fundamentals Labs Curriculum: a 10-lab series where every lab pairs a Console-first walkthrough on [`luigicarpio.dev/blog`](https://luigicarpio.dev/blog) with a matching module here. The pairing keeps the IaC defensible at the AWS-service level (CGE-P Domain 2 alignment) without abandoning click-path fluency.
 
@@ -24,7 +24,7 @@ Module defaults also target public-safety SaaS. Where CJIS v6.1 exceeds FedRAMP 
 ```mermaid
 graph LR
     A[Lab walkthrough<br/>luigicarpio.dev/blog] --> B[Terraform module<br/>modules/lab-name/]
-    B --> C[CI gates<br/>fmt · validate · tfsec · checkov · conftest]
+    B --> C[CI<br/>fmt · validate<br/>tfsec · checkov · conftest planned]
     C -->|module call| D[Consumer flagship<br/>aws-compliance-as-code<br/>oscal-evidence-pipeline<br/>iam-access-review]
     B --> E[compliance_attestation<br/>output map]
     E --> F[OSCAL evidence<br/>oscal-evidence-pipeline]
@@ -57,13 +57,13 @@ The artifact every module produces is a `compliance_attestation` output: a struc
 
 This maps to NIST 800-53A assessment objectives: the attestation answers the EXAMINE procedure (configuration matches required state) without requiring an assessor to manually screenshot the AWS Console. For FedRAMP 20x submissions, the same JSON is the machine-readable artifact a Plan of Action and Milestones (POA&M) automation would consume to verify remediation.
 
-CI gates run on every PR. Module outputs produce JSON-ready attestation. Consumer flagships persist that attestation into an OSCAL store. An assessor reads the attestation without manual transcription.
+CI runs fmt and validate on every PR. Module outputs produce JSON-ready attestation. Consumer flagships persist that attestation into an OSCAL store. An assessor reads the attestation without manual transcription.
 
 ## FedRAMP 20x Alignment
 
 - **Compliance-as-code:** Each module encodes its controls as HCL variable defaults, an OPA/Rego policy bundle (`policy/*.rego` with `*_test.rego`), and a `compliance_attestation` map literal. The compliance contract is the code. Drift is detectable via `terraform plan` diff against the module bundle.
 - **Machine-readable evidence:** `compliance_attestation` output → JSON → OSCAL `observation` / `finding` consumed by `oscal-evidence-pipeline`. No manual transcription, no screenshots, no spreadsheets.
-- **Automated scanning:** CI gates run `tfsec`, `checkov`, and `conftest test` (OPA) against every module on every PR. A module cannot merge while a policy gate fails.
+- **Automated scanning:** `tfsec`, `checkov`, and `conftest test` (OPA) stay planned.
 - **API-driven evidence:** `terraform output -json compliance_attestation` is the canonical evidence endpoint. Consumer flagships read it programmatically.
 - **30-day vs 90-day review window:** Modules produce machine-readable artifacts on every apply. The 30-day continuous monitoring SLA window applies, not the 90-day manual review window. Each module's apply timestamp is the evidence freshness anchor.
 
@@ -105,7 +105,7 @@ Each per-control boolean is **computed from actual deployed resource state** (e.
 
 - Terraform >= 1.9
 - AWS provider >= 5.0 for `iam-hardening`, >= 6.22.0 for `s3-compliant-bucket`, and >= 6.24.0 for `vpc-boundary`
-- OPA / conftest >= 0.60 (for `conftest test` CI gate)
+- OPA / conftest >= 0.60 (for the planned `conftest test` gate)
 - tfsec >= 1.28
 - checkov >= 3.x
 - `terraform-docs` >= 0.18 (for module README drift check)
@@ -147,7 +147,7 @@ aws-grc-terraform-modules/
 │   └── guardduty-eventbridge/     # planned: Lab 8 (detection + alerting, SI-4)
 ├── policy/                        # planned: shared OPA bundle + helpers (per-module bundles under modules/<name>/policy/)
 ├── examples/                      # planned: cross-module integration examples
-├── .github/workflows/             # planned: CI: fmt, validate, tfsec, checkov, conftest, terraform-docs drift
+├── .github/workflows/             # CI runs fmt and validate. tfsec, checkov, conftest, and terraform-docs stay planned
 ├── LICENSE.txt
 └── README.md
 ```
@@ -160,7 +160,7 @@ Modules land incrementally as the corresponding lab in the AWS Fundamentals Labs
 
 1. **Variable validation.** Every module declares `validation` blocks on inputs that encode compliance contracts. Cross-variable conditions use the boolean identity `(A → B) ≡ (¬A ∨ B)` because HCL `validation` lacks an `if/then` operator. Example: `var.environment != "prod" || var.retention_days >= 365` enforces 1-year retention in production at `terraform plan`, before any resource is created.
 2. **Required tags via `merge()`.** Compliance tags (`compliance_scope`, `managed_by`, `framework_target`, etc.) are layered on top of consumer tags via `merge(var.tags, local.required_tags)`. Argument order is deliberate: required tags overwrite consumer attempts to suppress them.
-3. **OPA/Rego policy bundle.** Each module ships `policy/<name>.rego` with `default deny` rules and `policy/<name>_test.rego` for unit tests. The CI gate runs `conftest test --policy modules/<name>/policy modules/<name>/plan.json` to enforce policy against the actual plan output.
+3. **OPA/Rego policy bundle.** Each module ships `policy/<name>.rego` with `default deny` rules and `policy/<name>_test.rego` for unit tests. A planned CI gate runs `conftest test --policy modules/<name>/policy modules/<name>/plan.json` against the plan output.
 
 **Detective (post-apply):**
 
@@ -168,7 +168,7 @@ Modules land incrementally as the corresponding lab in the AWS Fundamentals Labs
 
 **CI enforcement (per PR):**
 
-5. `terraform fmt -check`, `terraform validate`, `tfsec`, `checkov`, `conftest test`, `terraform-docs --check` all run on every PR. A module cannot merge while any gate fails. Each gate's rule catalog is referenced in the module README so the contract is explicit.
+5. CI runs `terraform fmt -check -recursive` and `terraform validate` on every pull request and on every push to `main`. `tfsec`, `checkov`, `conftest test`, and `terraform-docs --check` stay planned.
 
 ## Future Enhancements
 
