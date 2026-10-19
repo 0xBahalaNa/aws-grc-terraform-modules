@@ -57,7 +57,7 @@ The artifact every module produces is a `compliance_attestation` output: a struc
 
 This maps to NIST 800-53A assessment objectives: the attestation answers the EXAMINE procedure (configuration matches required state) without requiring an assessor to manually screenshot the AWS Console. For FedRAMP 20x submissions, the same JSON is the machine-readable artifact a Plan of Action and Milestones (POA&M) automation would consume to verify remediation.
 
-CI gates run on every PR. Module outputs produce JSON-ready attestation. Consumer flagships persist that attestation into an OSCAL store. An assessor reads the attestation without manual transcription.
+CI runs fmt and validate on every PR. Module outputs produce JSON-ready attestation. Consumer flagships persist that attestation into an OSCAL store. An assessor reads the attestation without manual transcription.
 
 ## FedRAMP 20x Alignment
 
