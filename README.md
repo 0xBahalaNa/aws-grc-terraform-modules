@@ -3,11 +3,10 @@
 ![FedRAMP](https://img.shields.io/badge/FedRAMP-High%20Baseline-0071bc?style=flat)
 ![NIST 800-53](https://img.shields.io/badge/NIST-800--53%20Rev%205-004990?style=flat)
 ![Terraform](https://img.shields.io/badge/Terraform-%E2%89%A5%201.9-7B42BC?style=flat)
-![OPA](https://img.shields.io/badge/OPA-%E2%89%A5%200.60-7D4698?style=flat)
 
 # AWS GRC Terraform Modules
 
-I build reusable Terraform modules that implement FedRAMP High and CJIS v6.1 baselines on AWS. Each module is one self-contained compliance unit (IAM hardening, KMS CMK, S3 with SSE/Object Lock, VPC enclave boundary, CloudTrail multi-region, AWS Config recorder, Security Hub, GuardDuty). Each ships with NIST 800-53 Rev 5 control mappings and OPA/Rego policy tests. tfsec and checkov gates stay planned.
+I build reusable Terraform modules that implement FedRAMP High and CJIS v6.1 baselines on AWS. Each module is one self-contained compliance unit (IAM hardening, KMS CMK, S3 with SSE/Object Lock, VPC enclave boundary, CloudTrail multi-region, AWS Config recorder, Security Hub, GuardDuty). Each ships with NIST 800-53 Rev 5 control mappings and a self-verifying `compliance_attestation` output. OPA/Rego policy tests, tfsec, and checkov stay planned.
 
 This repo is the Terraform half of the AWS Fundamentals Labs Curriculum: a 10-lab series where every lab pairs a Console-first walkthrough on [`luigicarpio.dev/blog`](https://luigicarpio.dev/blog) with a matching module here. The pairing keeps the IaC defensible at the AWS-service level (CGE-P Domain 2 alignment) without abandoning click-path fluency.
 
@@ -15,7 +14,7 @@ This repo is the Terraform half of the AWS Fundamentals Labs Curriculum: a 10-la
 
 ## Why This Exists
 
-Most "compliant Terraform" I find on GitHub is a single monolithic stack. Useful as a reference, hard to reuse. This repo inverts that: the unit of reuse is the module, not the stack. A flagship project (`aws-compliance-as-code`, `oscal-evidence-pipeline`, `iam-access-review`) consumes the module it needs, composes it with project-specific config, and inherits the control coverage without re-implementing the baseline. The compliance contract lives in the module: encoded as HCL variable defaults, OPA/Rego policy bundles, and a self-verifying `compliance_attestation` output that downstream OSCAL evidence pipelines cite as proof.
+Most "compliant Terraform" I find on GitHub is a single monolithic stack. Useful as a reference, hard to reuse. This repo inverts that: the unit of reuse is the module, not the stack. A flagship project (`aws-compliance-as-code`, `oscal-evidence-pipeline`, `iam-access-review`) consumes the module it needs, composes it with project-specific config, and inherits the control coverage without re-implementing the baseline. The compliance contract lives in the module: encoded as HCL variable defaults and a self-verifying `compliance_attestation` output that downstream OSCAL evidence pipelines cite as proof. OPA/Rego policy bundles stay planned.
 
 Module defaults also target public-safety SaaS. Where CJIS v6.1 exceeds FedRAMP High (agency-managed CMKs, 1-year audit retention with Object Lock, AAL2 MFA patterns), I default to the stricter rule.
 
@@ -28,10 +27,10 @@ graph LR
     C -->|module call| D[Consumer flagship<br/>aws-compliance-as-code<br/>oscal-evidence-pipeline<br/>iam-access-review]
     B --> E[compliance_attestation<br/>output map]
     E --> F[OSCAL evidence<br/>oscal-evidence-pipeline]
-    G[OPA/Rego policy<br/>policy/lab-name.rego] -->|plan-time check| C
+    G[OPA/Rego policy planned<br/>policy/lab-name.rego] -->|planned| C
 ```
 
-Each module is self-contained (`main.tf`, `variables.tf`, `outputs.tf`, `versions.tf`, `README.md`, `policy/*.rego`, `examples/`). The Console walkthrough on `luigicarpio.dev` documents the click-path equivalent of the HCL, so an auditor or reviewer can verify either the IaC or the Console-driven implementation against the same control mapping.
+Each module is self-contained (`main.tf`, `variables.tf`, `outputs.tf`, `versions.tf`, `README.md`, `examples/`). Per-module `policy/*.rego` bundles stay planned. The Console walkthrough on `luigicarpio.dev` documents the click-path equivalent of the HCL, so an auditor or reviewer can verify either the IaC or the Console-driven implementation against the same control mapping.
 
 ## Compliance Controls Addressed
 
@@ -61,7 +60,7 @@ CI runs fmt and validate on every PR. Module outputs produce JSON-ready attestat
 
 ## FedRAMP 20x Alignment
 
-- **Compliance-as-code:** Each module encodes its controls as HCL variable defaults, an OPA/Rego policy bundle (`policy/*.rego` with `*_test.rego`), and a `compliance_attestation` map literal. The compliance contract is the code. Drift is detectable via `terraform plan` diff against the module bundle.
+- **Compliance-as-code:** Each module encodes its controls as HCL variable defaults and a `compliance_attestation` map literal. OPA/Rego policy bundles (`policy/*.rego` and `*_test.rego`) stay planned. The compliance contract is the code. Drift is detectable via `terraform plan` diff against the module.
 - **Machine-readable evidence:** `compliance_attestation` output → JSON → OSCAL `observation` / `finding` consumed by `oscal-evidence-pipeline`. No manual transcription, no screenshots, no spreadsheets.
 - **Automated scanning:** `tfsec`, `checkov`, and `conftest test` (OPA) stay planned.
 - **API-driven evidence:** `terraform output -json compliance_attestation` is the canonical evidence endpoint. Consumer flagships read it programmatically.
@@ -160,7 +159,7 @@ Modules land incrementally as the corresponding lab in the AWS Fundamentals Labs
 
 1. **Variable validation.** Every module declares `validation` blocks on inputs that encode compliance contracts. Cross-variable conditions use the boolean identity `(A → B) ≡ (¬A ∨ B)` because HCL `validation` lacks an `if/then` operator. Example: `var.environment != "prod" || var.retention_days >= 365` enforces 1-year retention in production at `terraform plan`, before any resource is created.
 2. **Required tags via `merge()`.** Compliance tags (`compliance_scope`, `managed_by`, `framework_target`, etc.) are layered on top of consumer tags via `merge(var.tags, local.required_tags)`. Argument order is deliberate: required tags overwrite consumer attempts to suppress them.
-3. **OPA/Rego policy bundle.** Each module ships `policy/<name>.rego` with `default deny` rules and `policy/<name>_test.rego` for unit tests. A planned CI gate runs `conftest test --policy modules/<name>/policy modules/<name>/plan.json` against the plan output.
+3. **OPA/Rego policy bundle (planned).** `policy/<name>.rego` with `default deny` rules and `policy/<name>_test.rego` stay planned, same as tfsec and checkov. The planned CI gate runs `conftest test --policy modules/<name>/policy modules/<name>/plan.json` against the plan output.
 
 **Detective (post-apply):**
 
