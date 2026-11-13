@@ -4,7 +4,7 @@
 # one IGW, one zonal NAT, two route tables, four chained security groups,
 # a private NACL with SSH deny at rule 50, S3 Gateway + KMS and Secrets
 # Manager Interface endpoints, and VPC Flow Logs (ALL) to an existing bucket.
-# Companion walkthrough: luigicarpio.dev/blog/2026-09-aws-lab-3-vpc-boundary
+# Companion walkthrough: luigicarpio.dev/labs/2026-09-aws-lab-3-vpc-boundary
 #
 # Not built (shed): WAF, ALB, Shield, Resolver query logging, SSM/Logs
 # endpoints, a second NAT.

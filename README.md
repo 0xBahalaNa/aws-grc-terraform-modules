@@ -8,7 +8,7 @@
 
 I build reusable Terraform modules that implement FedRAMP High and CJIS v6.1 baselines on AWS. Each module is one self-contained compliance unit (IAM hardening, KMS CMK, S3 with SSE/Object Lock, VPC enclave boundary, CloudTrail multi-region, AWS Config recorder, Security Hub, GuardDuty). Each ships with NIST 800-53 Rev 5 control mappings and a self-verifying `compliance_attestation` output. OPA/Rego policy tests, tfsec, and checkov stay planned.
 
-This repo is the Terraform half of the AWS Fundamentals Labs Curriculum: a 10-lab series where every lab pairs a Console-first walkthrough on [`luigicarpio.dev/blog`](https://luigicarpio.dev/blog) with a matching module here. The pairing keeps the IaC defensible at the AWS-service level (CGE-P Domain 2 alignment) without abandoning click-path fluency.
+This repo is the Terraform half of the AWS Fundamentals Labs Curriculum: a 10-lab series where every lab pairs a Console-first walkthrough on [`luigicarpio.dev/labs`](https://luigicarpio.dev/labs/) with a matching module here. The pairing keeps the IaC defensible at the AWS-service level (CGE-P Domain 2 alignment) without abandoning click-path fluency.
 
 > **Status:** v1.0 chassis under construction. **`iam-hardening` (Lab 1) v1.1.1 implemented** in `modules/iam-hardening/`: password policy, RequireMFA, baseline groups, Lab* roles, Access Analyzer, self-verifying `compliance_attestation`. Other modules land as their corresponding labs ship.
 
@@ -22,7 +22,7 @@ Module defaults also target public-safety SaaS. Where CJIS v6.1 exceeds FedRAMP 
 
 ```mermaid
 graph LR
-    A[Lab walkthrough<br/>luigicarpio.dev/blog] --> B[Terraform module<br/>modules/lab-name/]
+    A[Lab walkthrough<br/>luigicarpio.dev/labs] --> B[Terraform module<br/>modules/lab-name/]
     B --> C[CI<br/>fmt · validate<br/>tfsec · checkov · conftest planned]
     C -->|module call| D[Consumer flagship<br/>aws-compliance-as-code<br/>oscal-evidence-pipeline<br/>iam-access-review]
     B --> E[compliance_attestation<br/>output map]
@@ -182,7 +182,7 @@ Modules land incrementally as the corresponding lab in the AWS Fundamentals Labs
 
 ## References
 
-- [AWS Fundamentals Labs Curriculum companion blog](https://luigicarpio.dev/blog): Console walkthroughs paired with each module
+- [AWS Fundamentals Labs Curriculum companion lab walkthroughs](https://luigicarpio.dev/labs/): Console walkthroughs paired with each module
 - [`aws-compliance-as-code`](https://github.com/0xBahalaNa/aws-compliance-as-code): first flagship consumer; August 2026 Terraform conversion
 - [`oscal-evidence-pipeline`](https://github.com/0xBahalaNa/oscal-evidence-pipeline): consumes `compliance_attestation` output as OSCAL observation evidence
 - [NIST SP 800-53 Rev 5](https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final)

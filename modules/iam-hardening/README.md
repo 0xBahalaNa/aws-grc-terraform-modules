@@ -2,7 +2,7 @@
 
 Lab 1 module (v1.1.1). IAM baseline aligned with NIST 800-53 Rev 5 **AC-2 / AC-3 / AC-6**, **IA-2(1)(2)**, and **IA-5**, with CJIS v6.1 **IA-2 AAL2** (MFA on trust policy) and **CJI-user tagging** deltas.
 
-> **Status: v1.1.1 implemented.** Password policy, `RequireMFA` deny policy, baseline groups, `Lab*` roles, and account Access Analyzer. Companion Console walkthrough on [luigicarpio.dev/blog](https://luigicarpio.dev/blog). Permissions boundaries are **deferred** to `aws-compliance-as-code`: not in this module.
+> **Status: v1.1.1 implemented.** Password policy, `RequireMFA` deny policy, baseline groups, `Lab*` roles, and account Access Analyzer. Companion Console walkthrough on [luigicarpio.dev/labs/2026-06-aws-lab-1-iam-hardening](https://luigicarpio.dev/labs/2026-06-aws-lab-1-iam-hardening/). Permissions boundaries are **deferred** to `aws-compliance-as-code`: not in this module.
 
 ## What This Module Creates
 
