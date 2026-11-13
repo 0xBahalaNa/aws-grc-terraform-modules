@@ -5,7 +5,7 @@
 # bucket-level Block Public Access (no toggle), TLS-only bucket policy,
 # optional server access logging to a consumer-supplied bucket, and one
 # fixed noncurrent-version lifecycle rule.
-# Companion walkthrough: luigicarpio.dev/blog/2026-07-aws-lab-2-s3-compliant-bucket
+# Companion walkthrough: luigicarpio.dev/labs/2026-07-aws-lab-2-s3-compliant-bucket
 
 # locals is a computed-values block — not an input, not a resource. required_tags
 # is a map so merge() can overwrite by key (Lab 2.4 pattern #1 / CM-6). Key set

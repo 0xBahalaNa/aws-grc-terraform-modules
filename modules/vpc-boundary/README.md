@@ -2,7 +2,7 @@
 
 Lab 3 module (v1.3.0). CJI enclave boundary aligned with NIST 800-53 Rev 5 **SC-7 / SC-7(3) / SC-7(5)**, **AC-4**, and **AU-2 / AU-3 / AU-12**, with CJIS v6.1 treated as the same enclave (the VPC is the boundary). **AU-9** is the destination bucket's control, not a resource this module creates.
 
-> **Status: v1.3.0 implemented.** One VPC, four subnets across two AZs, one internet gateway, one zonal NAT, two route tables, four chained security groups, a private NACL with SSH deny at rule 50, an S3 Gateway endpoint plus KMS and Secrets Manager Interface endpoints, and VPC Flow Logs (ALL) to an existing bucket. Companion Console walkthrough: [luigicarpio.dev/blog/2026-09-aws-lab-3-vpc-boundary](https://luigicarpio.dev/blog/2026-09-aws-lab-3-vpc-boundary). OPA/Rego policy bundle is **deferred** to the chassis minor: not in this module. Same call as Lab 2.
+> **Status: v1.3.0 implemented.** One VPC, four subnets across two AZs, one internet gateway, one zonal NAT, two route tables, four chained security groups, a private NACL with SSH deny at rule 50, an S3 Gateway endpoint plus KMS and Secrets Manager Interface endpoints, and VPC Flow Logs (ALL) to an existing bucket. Companion Console walkthrough: [luigicarpio.dev/labs/2026-09-aws-lab-3-vpc-boundary](https://luigicarpio.dev/labs/2026-09-aws-lab-3-vpc-boundary/). OPA/Rego policy bundle is **deferred** to the chassis minor: not in this module. Same call as Lab 2.
 
 ## What This Module Creates
 

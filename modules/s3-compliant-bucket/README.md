@@ -2,7 +2,7 @@
 
 Lab 2 module (v1.2.1). Evidence bucket aligned with NIST 800-53 Rev 5 **SC-28 / SC-28(1)**, **SC-13**, **SC-8**, **AC-3 / AC-6**, **AU-11**, **AU-9**, **SI-7 / CP-9**, and **CM-6**, with CJIS v6.1 deltas (agency-managed CMK; 1-year Object Lock retention).
 
-> **Status: v1.2.1 implemented.** SSE-KMS with a required customer-managed CMK, Object Lock Governance (365-day floor), versioning, bucket-level Block Public Access, TLS-only bucket policy, optional server access logging to a consumer-supplied bucket, and one noncurrent-version lifecycle rule. Companion Console walkthrough: [luigicarpio.dev/blog/2026-07-aws-lab-2-s3-compliant-bucket](https://luigicarpio.dev/blog/2026-07-aws-lab-2-s3-compliant-bucket). OPA/Rego policy bundle is **deferred** to the chassis minor: not in this module.
+> **Status: v1.2.1 implemented.** SSE-KMS with a required customer-managed CMK, Object Lock Governance (365-day floor), versioning, bucket-level Block Public Access, TLS-only bucket policy, optional server access logging to a consumer-supplied bucket, and one noncurrent-version lifecycle rule. Companion Console walkthrough: [luigicarpio.dev/labs/2026-07-aws-lab-2-s3-compliant-bucket](https://luigicarpio.dev/labs/2026-07-aws-lab-2-s3-compliant-bucket/). OPA/Rego policy bundle is **deferred** to the chassis minor: not in this module.
 
 ## What This Module Creates
 

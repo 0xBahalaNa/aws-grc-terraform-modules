@@ -3,7 +3,7 @@
 # Codifies Lab 1 console baseline: password policy, RequireMFA deny policy,
 # baseline groups, Lab* roles (MFA-conditioned auditor trust), Access Analyzer.
 # Permissions boundaries deferred to aws-compliance-as-code.
-# Companion walkthrough: luigicarpio.dev/blog
+# Companion walkthrough: luigicarpio.dev/labs/2026-06-aws-lab-1-iam-hardening
 
 # Required compliance tags layered on top of consumer-provided tags.
 # Argument order is deliberate — required tags overwrite consumer attempts to
