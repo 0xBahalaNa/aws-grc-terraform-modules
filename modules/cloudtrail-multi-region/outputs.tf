@@ -1,0 +1,72 @@
+# Self-verifying evidence outputs — booleans read deployed resource attributes.
+
+output "trail_arn" {
+  description = "ARN of the multi-region trail."
+  value       = aws_cloudtrail.this.arn
+}
+
+output "trail_name" {
+  description = "Name of the trail. The bucket and key policies' aws:SourceArn must name this trail."
+  value       = aws_cloudtrail.this.name
+}
+
+output "cloudwatch_log_group_arn" {
+  description = "ARN of the CloudWatch Logs group that receives the trail (no :* suffix)."
+  value       = aws_cloudwatch_log_group.this.arn
+}
+
+output "cloudwatch_log_group_name" {
+  description = "Name of the CloudWatch Logs group. Metric filters and Logs Insights queries target this name."
+  value       = aws_cloudwatch_log_group.this.name
+}
+
+output "compliance_attestation" {
+  description = "Self-verifying compliance attestation. Booleans are read from resource attributes, not from variables."
+  value = {
+    module            = "cloudtrail-multi-region"
+    module_version    = local.required_tags.module_version
+    framework_targets = ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.1"]
+    # The list is the mapping. The booleans below are the checks.
+    # critical_alarms_present (SI-4) arrives with the alerting resources in PR 2.
+    controls_satisfied = [
+      "AU-2",
+      "AU-3",
+      "AU-9",
+      "AU-11",
+      "AU-12",
+    ]
+    environment               = var.environment
+    required_compliance_scope = var.required_compliance_scope
+
+    multi_region        = aws_cloudtrail.this.is_multi_region_trail
+    log_file_validation = aws_cloudtrail.this.enable_log_file_validation
+
+    # Same key-ARN shape as the variable validation, read off both resources
+    # rather than off var.kms_key_arn.
+    kms_encrypted = (
+      can(regex("^arn:aws[a-z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/[a-z0-9-]+$", aws_cloudtrail.this.kms_key_id)) &&
+      can(regex("^arn:aws[a-z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/[a-z0-9-]+$", aws_cloudwatch_log_group.this.kms_key_id))
+    )
+
+    cloudwatch_retention_365 = aws_cloudwatch_log_group.this.retention_in_days >= 365
+
+    # Equality, not just non-empty: the trail points at this module's group
+    # and role. A null attribute compares false instead of erroring.
+    cloudwatch_delivery_configured = (
+      aws_cloudtrail.this.cloud_watch_logs_group_arn == "${aws_cloudwatch_log_group.this.arn}:*" &&
+      aws_cloudtrail.this.cloud_watch_logs_role_arn == aws_iam_role.cloudtrail_to_cwlogs.arn
+    )
+
+    management_events_all = (
+      aws_cloudtrail.this.event_selector[0].read_write_type == "All" &&
+      aws_cloudtrail.this.event_selector[0].include_management_events
+    )
+
+    # for builds a list of bools, one per required tag key. alltrue ANDs them.
+    # This is not for_each: nothing is created per key.
+    # https://developer.hashicorp.com/terraform/language/expressions/for
+    required_tags_present = alltrue([
+      for k in keys(local.required_tags) : contains(keys(aws_cloudtrail.this.tags_all), k)
+    ])
+  }
+}
