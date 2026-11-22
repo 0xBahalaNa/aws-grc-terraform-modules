@@ -35,9 +35,16 @@ output "compliance_attestation" {
       "AU-11",
       "AU-12",
     ]
+    # G-5: the gap is in the output, not only the README. Logs sit in the
+    # account they describe; a separate log-archive account would meet it.
+    known_gaps = ["AU-9(2)"]
+
     environment               = var.environment
     required_compliance_scope = var.required_compliance_scope
 
+    # The provider refreshes enable_logging from the live trail status, so a
+    # stop-logging run outside Terraform flips this after the next refresh.
+    logging_enabled     = aws_cloudtrail.this.enable_logging
     multi_region        = aws_cloudtrail.this.is_multi_region_trail
     log_file_validation = aws_cloudtrail.this.enable_log_file_validation
 
