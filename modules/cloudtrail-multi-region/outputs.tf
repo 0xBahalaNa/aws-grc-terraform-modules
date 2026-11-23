@@ -20,6 +20,16 @@ output "cloudwatch_log_group_name" {
   value       = aws_cloudwatch_log_group.this.name
 }
 
+output "athena_workgroup_name" {
+  description = "Name of the Athena workgroup that holds the saved review queries."
+  value       = aws_athena_workgroup.audit.name
+}
+
+output "athena_database_name" {
+  description = "Name of the Glue database the cloudtrail_logs table lives in."
+  value       = aws_glue_catalog_database.audit.name
+}
+
 output "compliance_attestation" {
   description = "Self-verifying compliance attestation. Booleans are read from resource attributes, not from variables."
   value = {
@@ -30,6 +40,8 @@ output "compliance_attestation" {
     controls_satisfied = [
       "AU-2",
       "AU-3",
+      "AU-6",
+      "AU-7",
       "AU-9",
       "AU-11",
       "AU-12",
@@ -75,6 +87,15 @@ output "compliance_attestation" {
     required_tags_present = alltrue([
       for k in keys(local.required_tags) : contains(keys(aws_cloudtrail.this.tags_all), k)
     ])
+
+    # AU-6: the review path is configured and encrypted. It does not prove
+    # anyone ran a review. That is operating evidence (weekly under CJIS).
+    athena_review_configured = (
+      aws_athena_workgroup.audit.configuration[0].enforce_workgroup_configuration &&
+      aws_athena_workgroup.audit.configuration[0].result_configuration[0].encryption_configuration[0].encryption_option == "SSE_KMS" &&
+      can(regex("^arn:aws[a-z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/[a-z0-9-]+$", aws_athena_workgroup.audit.configuration[0].result_configuration[0].encryption_configuration[0].kms_key_arn)) &&
+      aws_athena_workgroup.audit.configuration[0].result_configuration[0].output_location == "s3://${var.athena_results_bucket_name}/"
+    )
 
     # SI-4: the alarms and rules exist, are on, and point at the topic. It does
     # not prove the topic delivers. The step 13 alert test does that.

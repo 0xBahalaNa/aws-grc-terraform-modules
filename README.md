@@ -10,7 +10,7 @@ I build reusable Terraform modules that implement FedRAMP High and CJIS v6.1 bas
 
 This repo is the Terraform half of the AWS Fundamentals Labs Curriculum: a 10-lab series where every lab pairs a Console-first walkthrough on [`luigicarpio.dev/labs`](https://luigicarpio.dev/labs/) with a matching module here. The pairing keeps the IaC defensible at the AWS-service level (CGE-P Domain 2 alignment) without abandoning click-path fluency.
 
-> **Status:** v1.0 chassis under construction. **`iam-hardening` (Lab 1) v1.1.1 implemented** in `modules/iam-hardening/`: password policy, RequireMFA, baseline groups, Lab* roles, Access Analyzer, self-verifying `compliance_attestation`. Other modules land as their corresponding labs ship.
+> **Status:** four modules shipped: `iam-hardening` (Lab 1) v1.1.1, `s3-compliant-bucket` (Lab 2) v1.2.1, `vpc-boundary` (Lab 3) v1.3.0, and `cloudtrail-multi-region` (Lab 4) v1.4.0. The v1.0 chassis is still under construction. Other modules land as their labs ship.
 
 ## Why This Exists
 
@@ -42,7 +42,7 @@ Composite across the planned module set. Each module's `README.md` carries the p
 | IA-2 (1)(2), IA-5 | Yes | IA-2 AAL2 delta | `iam-hardening`: RequireMFA deny gate (BoolIfExists), MFA-required auditor role trust, account password policy (max age / complexity) |
 | SC-12, SC-13, SC-28 | Yes | agency-managed CMK delta (SC-28) | `kms-key-management` + `s3-compliant-bucket`: agency-managed CMK only, FIPS endpoints, automatic rotation, SSE-KMS on storage |
 | SC-7, SC-7(5), AC-4 | Yes | P1 boundary | `vpc-boundary`: public/private subnets, SG+NACL least privilege, flow logs, VPC endpoints for S3/KMS |
-| AU-2, AU-6, AU-9, AU-12 | Yes | AU-11 1-year retention delta | `cloudtrail-multi-region`: org trail, KMS-encrypted log archive, log integrity validation, S3 Object Lock |
+| AU-2, AU-6, AU-7, AU-9, AU-11, AU-12 | Yes | AU-11 1-year retention delta | `cloudtrail-multi-region`: multi-region single-account trail, CMK encryption, log file validation, 1-year CloudWatch Logs retention, Athena review queries. Object Lock is inherited from `s3-compliant-bucket` |
 | CA-7, CM-3, CM-6 | Yes | - | `config-recorder` + NIST 800-53 conformance pack; required-tag enforcement via `merge()` |
 | SI-4, RA-5, SI-4(2) | Yes | - | `guardduty-eventbridge`: detection + EventBridge → SNS pipeline |
 
@@ -72,7 +72,7 @@ Module defaults target CJIS v6.1 where it exceeds FedRAMP High. The three primar
 
 - **Agency-managed CMK only (SC-12, SC-13, SC-28).** Every module that touches encryption uses a customer-managed `aws_kms_key` with an explicit key policy. AWS-managed keys are not exposed as a configuration option. The module won't accept them. GovCloud FIPS 140-2/3 boundary differences are annotated in `kms-key-management/README.md` rather than deployed (single-user commercial AWS access).
 - **CJI-user tagging convention (AC-2 delta).** `iam-hardening` exposes a `cji_user_role` tag on human-assumable roles that downstream access review automation can filter on. Review cadence itself is annual (AC-2(j)), matching FedRAMP High. The CJIS-specific value is need-to-know granularity, not a shorter clock. Required tags are layered on top of consumer tags via `merge(var.tags, local.required_tags)` so they cannot be suppressed.
-- **1-year minimum audit retention with weekly review (AU-6 delta).** `cloudtrail-multi-region` sets `s3_object_lock_retention_days >= 365` as a variable default, with plan-time validation enforcing `>= 365` when `environment == "prod"` using the boolean implication `(env != "prod") ∨ (retention >= 365)`. Weekly-review evidence tags are emitted in the attestation output.
+- **1-year minimum audit retention with weekly review (AU-11 and AU-6 deltas).** `cloudtrail-multi-region` validates CloudWatch Logs retention `>= 365` days at plan time. The S3 copy's 1-year retention is the Lab 2 bucket's Object Lock default. The weekly AU-6 review runs on the module's Athena workgroup and saved queries. The module does not produce evidence that a review happened.
 
 CJIS Security Policy v6.1 (released June 25, 2026) is the current policy, aligned with NIST 800-53 Rev 5. v6.x has been the default audit baseline since April 1, 2026 (v5.9.5 sunset March 31, 2026); modernized Priority 2-4 controls are fully enforceable Oct 1, 2027 (timing varies by state CSA).
 
@@ -103,7 +103,7 @@ Each per-control boolean is **computed from actual deployed resource state** (e.
 ## Requirements
 
 - Terraform >= 1.9
-- AWS provider >= 5.0 for `iam-hardening`, >= 6.22.0 for `s3-compliant-bucket`, >= 6.24.0 for `vpc-boundary`, and >= 6.0.0 for `cloudtrail-multi-region` (in progress)
+- AWS provider >= 5.0 for `iam-hardening`, >= 6.22.0 for `s3-compliant-bucket`, >= 6.24.0 for `vpc-boundary`, and >= 6.0.0 for `cloudtrail-multi-region`
 - OPA / conftest >= 0.60 (for the planned `conftest test` gate)
 - tfsec >= 1.28
 - checkov >= 3.x
@@ -139,7 +139,7 @@ aws-grc-terraform-modules/
 │   ├── iam-hardening/             # Lab 1: v1.1.1 implemented (password policy, RequireMFA, groups, roles, Access Analyzer)
 │   ├── s3-compliant-bucket/       # Lab 2: v1.2.1 implemented (SSE-KMS, Object Lock, TLS-only, attestation)
 │   ├── vpc-boundary/              # Lab 3: v1.3.0 implemented (CJI enclave, SC-7, flow logs, attestation)
-│   ├── cloudtrail-multi-region/   # Lab 4: v1.4.0 in progress (multi-region trail, CloudWatch Logs, AU-2/3/9/11/12)
+│   ├── cloudtrail-multi-region/   # Lab 4: v1.4.0 implemented (multi-region trail, AU-2/3/9/11/12, SI-4 alerting, AU-6/7 Athena review)
 │   ├── config-recorder/           # planned: Lab 5 (Config + custom rules, CA-7, CM-3/6)
 │   ├── security-hub/              # planned: Lab 6 (Security Hub posture)
 │   ├── kms-key-management/        # planned: Lab 7 (CMK with rotation, SC-12/13/28)
@@ -175,7 +175,7 @@ Modules land incrementally as the corresponding lab in the AWS Fundamentals Labs
 - v1.1: `iam-hardening` (Lab 1) shipped
 - v1.2: `s3-compliant-bucket` (Lab 2) shipped
 - v1.3: `vpc-boundary` (Lab 3) shipped
-- v1.4: `cloudtrail-multi-region` (Lab 4)
+- v1.4: `cloudtrail-multi-region` (Lab 4) shipped
 - v2.0: full Lab 1-8 module set; opportunistic on Labs 5-8 per Sprint Plan
 - GovCloud variant set when account access is available: FIPS 140-3 KMS, agency-managed key isolation patterns
 - Cross-module reference architecture under `examples/`: FedRAMP High landing zone composed from Labs 1-8
