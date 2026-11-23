@@ -41,6 +41,18 @@ variable "kms_key_arn" {
   }
 }
 
+# Same [a-z-]* after aws as kms_key_arn, so arn:aws-us-gov:sns:... passes.
+variable "critical_event_sns_topic_arn" {
+  description = "SNS topic ARN the alarms and EventBridge rules publish to. Required. The topic and its policy are the caller's; see the module README."
+  type        = string
+  nullable    = false
+
+  validation {
+    condition     = can(regex("^arn:aws[a-z-]*:sns:[a-z0-9-]+:[0-9]{12}:[A-Za-z0-9_-]+$", var.critical_event_sns_topic_arn))
+    error_message = "critical_event_sns_topic_arn must be an SNS topic ARN (arn:aws:sns:<region>:<account>:<topic> or arn:aws-us-gov:sns:...)."
+  }
+}
+
 # CloudWatch Logs accepts a fixed list of retention values. This is that list
 # from 365 up. 0 (never expire) is left out: a log group that never expires
 # is a cost decision, not an AU-11 floor.
