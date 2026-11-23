@@ -1,8 +1,8 @@
 # Module: cloudtrail-multi-region
 
-Lab 4 module (v1.4.0). The account's audit trail, aligned with NIST 800-53 Rev 5 **AU-2 / AU-3 / AU-12** (what gets logged), **AU-9** (signed digests and SSE-KMS), **AU-11** (1-year retention on the CloudWatch Logs copy), and **SI-4** (alerting on root activity, console login without MFA, and IAM policy changes).
+Lab 4 module (v1.4.0). The account's audit trail, aligned with NIST 800-53 Rev 5 **AU-2 / AU-3 / AU-12** (what gets logged), **AU-9** (signed digests and SSE-KMS), **AU-11** (1-year retention on the CloudWatch Logs copy), **SI-4** (alerting on root activity, console login without MFA, and IAM policy changes), and **AU-6 / AU-7** (Athena review queries).
 
-> **Status: v1.4.0 in progress, PR 2 of 3 (alerting).** PR 1 built collection: one multi-region trail to an existing Lab 2 bucket, its CloudWatch Logs group, and the role CloudTrail uses to write there. This PR adds alerting (metric filters, alarms, EventBridge rules). PR 3 adds Athena. All three land in this same v1.4.0 before it is tagged. Companion walkthrough: [luigicarpio.dev/labs/2026-11-aws-lab-4-cloudtrail-audit](https://luigicarpio.dev/labs/2026-11-aws-lab-4-cloudtrail-audit/). OPA/Rego policy bundle is **deferred** to the chassis minor, same call as Labs 2 and 3.
+> **Status: v1.4.0 complete.** I built it in three PRs. Collection: one multi-region trail to an existing Lab 2 bucket, its CloudWatch Logs group, and the role CloudTrail uses to write there. Alerting: metric filters, alarms, and EventBridge rules. Review: an Athena workgroup, a Glue database, and saved queries. Companion walkthrough: [luigicarpio.dev/labs/2026-11-aws-lab-4-cloudtrail-audit](https://luigicarpio.dev/labs/2026-11-aws-lab-4-cloudtrail-audit/). OPA/Rego policy bundle is **deferred** to the chassis minor, same call as Labs 2 and 3.
 
 ## What This Module Creates
 
@@ -15,10 +15,13 @@ Lab 4 module (v1.4.0). The account's audit trail, aligned with NIST 800-53 Rev 5
 | 3 `aws_cloudwatch_log_metric_filter`: `RootActivity`, `ConsoleLoginNoMFA`, `IAMPolicyChange` in namespace `GRC/Lab4` (CIS patterns) | SI-4 |
 | 3 `aws_cloudwatch_metric_alarm`: `<prefix>-root-activity`, `<prefix>-console-login-no-mfa`, `<prefix>-iam-policy-change`. Sum >= 1 over 5 minutes, missing data `notBreaching` | SI-4 |
 | 3 `aws_cloudwatch_event_rule` on the default bus with the same names, plus 3 `aws_cloudwatch_event_target` (target ID `sns`) | SI-4 |
+| `aws_athena_workgroup` `audit-queries`: enforced configuration, engine v3, results SSE-KMS with the CMK | AU-6, AU-9 |
+| `aws_glue_catalog_database` `cloudtrail_audit` | AU-6 |
+| 4 `aws_athena_named_query`: `create-cloudtrail-logs-table` (partition-projected DDL), `au6-root-activity-90d`, `ac2-iam-changes-by-actor`, `si4-calls-per-region-per-day` | AU-6, AU-7 |
 
 There is no `is_multi_region_trail` or `enable_log_file_validation` input. Both are literal `true` in `main.tf`. A caller cannot turn either off because there is no variable to set.
 
-With the default `name_prefix = "grc-lab4"` the names match the Lab 4 CLI build: trail `grc-lab4-trail`, log group `/aws/cloudtrail/grc-lab4-trail`, role `CloudTrailRole-grc-lab4`, inline policy `cloudtrail-to-cwlogs`, alarms and EventBridge rules `grc-lab4-root-activity`, `grc-lab4-console-login-no-mfa`, `grc-lab4-iam-policy-change`.
+With the default `name_prefix = "grc-lab4"` the names match the Lab 4 CLI build: trail `grc-lab4-trail`, log group `/aws/cloudtrail/grc-lab4-trail`, role `CloudTrailRole-grc-lab4`, inline policy `cloudtrail-to-cwlogs`, alarms and EventBridge rules `grc-lab4-root-activity`, `grc-lab4-console-login-no-mfa`, `grc-lab4-iam-policy-change`, Athena workgroup `audit-queries`, Glue database `cloudtrail_audit`.
 
 **Scope limits:**
 
@@ -30,6 +33,11 @@ With the default `name_prefix = "grc-lab4"` the names match the Lab 4 CLI build:
 - **The module does not create the SNS topic, its subscriptions, or its policy.** The lab topic is unencrypted. Encrypting it with the CMK needs two more key-policy statements, one for `events.amazonaws.com` and one for `cloudwatch.amazonaws.com`. The AWS-managed `aws/sns` key can't admit EventBridge. Alert bodies carry event metadata, not CJI.
 - **EventBridge rules are regional.** They cover only the module's region. The alarm path covers every region because the one log group carries the whole trail.
 - **`notBreaching` hides a dead pipeline.** An alarm can't tell no events from no pipeline. Pipeline health is `get-trail-status`, not the alarm state.
+- **The two MFA matchers differ on paper only.** The `ConsoleLoginNoMFA` filter matches `MFAUsed != "Yes"` and the EventBridge rule matches `["No"]`. They agree on real events because CloudTrail always sets `Yes` or `No`.
+- **The Athena table is not in Terraform state.** Run `create-cloudtrail-logs-table` once in the workgroup. Drift or deletion of the table is invisible to plan. An `aws_glue_catalog_table` would close it.
+- **Workgroup and database names are fixed.** `audit-queries` and `cloudtrail_audit` do not take the prefix, so there is one copy per account.
+- **Projection covers the last year and the regions enabled at plan time.** The day range is `NOW-1YEARS,NOW`. A newly enabled region needs a re-plan and the DDL rerun.
+- **The results bucket is the caller's,** same as the log bucket. Make it SSE-KMS with the CMK, give it a short expiry, and leave Object Lock off. The key policy's account-root statement already covers Athena, which uses the caller's own IAM permissions on the key.
 
 ## Policies the caller adds before apply
 
@@ -138,15 +146,16 @@ Keep the topic's `__default_statement_ID`. The alarms publish through it, becaus
 | AU-2 / AU-3 / AU-12 (Event Logging / Content / Generation) | Yes | AU-2, AU-3, AU-12 | Multi-region trail, management events Read + Write, global service events on. No off switch |
 | AU-9 (Protection of Audit Information) | Yes | AU-9 | Log file validation (hourly signed digests) and SSE-KMS with the agency-managed CMK. Object Lock is inherited from the Lab 2 bucket |
 | AU-11 (Audit Record Retention) | Yes | 1-year retention | CloudWatch Logs retention 365 days minimum, enforced by validation. The S3 copy's retention is the Lab 2 bucket's Object Lock default |
+| AU-6 (Audit Record Review) | Yes | AU-6 (weekly review) | Workgroup with enforced, CMK-encrypted results and saved review queries. Met only after the table DDL is run, so it is not in `controls_satisfied`. Even then, the module does not prove a review ran |
+| AU-7 (Audit Record Reduction and Report Generation) | Yes | | Partition-projected table and three saved queries that reduce the trail to root activity, IAM changes by actor, and calls per region per day. Met only after the table DDL is run, so it is not in `controls_satisfied` |
 | SI-4 (System Monitoring) | Yes | SI-4 | Three metric filters with alarms (every region, minutes) and three EventBridge rules (home region, seconds) on root activity, console login without MFA, and IAM policy changes, published to the caller's SNS topic |
 | AU-9(2) (Store on Separate Systems) | Yes | | **Not met.** Single-account trail. See Scope limits |
-
-AU-6 review (Athena) arrives in PR 3.
 
 ## GovCloud / CJIS
 
 - CloudTrail behaves the same in GovCloud. The trail ARN is built from `data.aws_partition`, so it becomes `arn:aws-us-gov:cloudtrail:...` without a branch.
 - `kms_key_arn` accepts `arn:aws-us-gov:kms:...` (`[a-z-]*` after `aws`).
+- Athena and Glue exist in GovCloud. IAM events land in `us-gov-west-1` there, so `ac2-iam-changes-by-actor` filters on `eventsource`, not on a region.
 - CJIS contexts want FIPS endpoints for reading logs. I annotate this and do not build it: the provider endpoint is the caller's choice, not a resource here.
 
 ## Inputs
@@ -157,6 +166,7 @@ AU-6 review (Athena) arrives in PR 3.
 | `log_bucket_name` | string | required | Bucket name, not ARN |
 | `kms_key_arn` | string | required | Customer-managed key ARN. No alias ARN, no SSE-S3 fallback |
 | `critical_event_sns_topic_arn` | string | required | SNS topic ARN. The topic and its policy are the caller's |
+| `athena_results_bucket_name` | string | required | Bucket name for query results. Not the log bucket |
 | `cloudwatch_log_retention_days` | number | `365` | A CloudWatch Logs retention value of 365 or more |
 | `environment` | string | required | `dev`, `staging`, or `prod` |
 | `project_tag` | string | required | `project` tag |
@@ -171,6 +181,8 @@ AU-6 review (Athena) arrives in PR 3.
 | `trail_name` | The name the policies' `aws:SourceArn` must match |
 | `cloudwatch_log_group_arn` | No `:*` suffix |
 | `cloudwatch_log_group_name` | |
+| `athena_workgroup_name` | Run the saved queries here |
+| `athena_database_name` | Holds the `cloudtrail_logs` table |
 | `compliance_attestation` | Booleans read from resource attributes |
 
 Sample attestation after apply:
@@ -192,11 +204,12 @@ Sample attestation after apply:
   "cloudwatch_delivery_configured": true,
   "management_events_all": true,
   "required_tags_present": true,
+  "athena_review_configured": true,
   "critical_alarms_present": true
 }
 ```
 
-`cloudwatch_delivery_configured` checks that the trail points at this module's group and role. It does not prove delivery. `get-trail-status` and its `LatestCloudWatchLogsDeliveryError` field do that. `critical_alarms_present` checks that the alarms and rules are on and point at the topic. It does not prove delivery.
+`cloudwatch_delivery_configured` checks that the trail points at this module's group and role. It does not prove delivery. `get-trail-status` and its `LatestCloudWatchLogsDeliveryError` field do that. `critical_alarms_present` checks that the alarms and rules are on and point at the topic. It does not prove delivery. `athena_review_configured` checks that the workgroup enforces CMK-encrypted results in the named bucket. It does not prove anyone ran a review; that is operating evidence.
 
 ## Usage
 
@@ -210,10 +223,9 @@ module "audit_trail" {
   project_tag     = "lab-4-cloudtrail-multi-region"
 
   critical_event_sns_topic_arn = "arn:aws:sns:us-east-1:111122223333:grc-lab4-critical-events"
+  athena_results_bucket_name   = "grc-lab4-athena-results"
 }
 ```
-
-`v1.4.0` is not tagged until PR 3 merges. Until then, point `?ref=` at a commit.
 
 ## Requirements
 
@@ -221,6 +233,7 @@ module "audit_trail" {
 - AWS provider >= 6.0.0: `data.aws_region` exposes `region`
 - An existing bucket from `s3-compliant-bucket`, its CMK, and the policy statements above on both
 - An existing SNS topic with the `AllowEventBridgePublish` statement above
+- An existing results bucket, separate from the log bucket, SSE-KMS with the CMK
 
 ## Examples
 

@@ -2,13 +2,14 @@
 #
 # Collection: one multi-region trail to an existing Lab 2 bucket, its
 # CloudWatch Logs group, and the role CloudTrail uses to write there.
-# PR 2 of 3 adds alerting (metric filters, alarms, EventBridge). Athena comes
-# in PR 3.
+# Alerting: metric filters, alarms, and EventBridge rules to an SNS topic.
+# Review: an Athena workgroup, a Glue database, and saved queries.
 # Companion walkthrough: luigicarpio.dev/labs/2026-11-aws-lab-4-cloudtrail-audit
 #
 # The module does not write the bucket policy or the key policy. Both belong
 # to the Lab 2 stack. It also does not create the SNS topic or write its
-# policy. The README lists the statements the caller adds.
+# policy, or the Athena results bucket. The README lists the statements the
+# caller adds.
 
 # Partition, region, and account build the trail ARN as a string. Nothing is
 # typed by hand, so the same code runs in arn:aws-us-gov.
@@ -300,4 +301,146 @@ resource "aws_cloudwatch_event_target" "iam_policy_change" {
   rule      = aws_cloudwatch_event_rule.iam_policy_change.name
   target_id = "sns"
   arn       = var.critical_event_sns_topic_arn
+}
+
+# AU-6 / AU-9 — the workgroup reviewers run queries in. Enforced config means
+# a user cannot redirect results to an unencrypted location. Results carry log
+# content, so they use the CMK. The results bucket is not the WORM log bucket:
+# results are derived and reproducible, and Object Lock would hold every
+# result file for a year.
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/athena_workgroup
+resource "aws_athena_workgroup" "audit" {
+  name  = "audit-queries"
+  state = "ENABLED"
+
+  configuration {
+    enforce_workgroup_configuration = true
+
+    engine_version {
+      selected_engine_version = "Athena engine version 3"
+    }
+
+    result_configuration {
+      output_location = "s3://${var.athena_results_bucket_name}/"
+
+      encryption_configuration {
+        encryption_option = "SSE_KMS"
+        kms_key_arn       = var.kms_key_arn
+      }
+    }
+  }
+
+  tags = merge(var.tags, local.required_tags)
+}
+
+# Glue, not aws_athena_database. The Athena resource runs a CREATE DATABASE
+# query; the Glue resource writes the catalog entry directly.
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/glue_catalog_database
+resource "aws_glue_catalog_database" "audit" {
+  name = "cloudtrail_audit"
+
+  tags = merge(var.tags, local.required_tags)
+}
+
+# The enabled regions at plan time become the region partition values.
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/regions
+data "aws_regions" "enabled" {}
+
+# The table is created by running this query once, so it sits outside
+# Terraform state (README scope limits). aws_glue_catalog_table would put it
+# in state at about 80 lines of schema.
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/athena_named_query
+resource "aws_athena_named_query" "create_table" {
+  name        = "create-cloudtrail-logs-table"
+  description = "Run once. Creates the partition-projected cloudtrail_logs table."
+  workgroup   = aws_athena_workgroup.audit.name
+  database    = aws_glue_catalog_database.audit.name
+
+  # The date partition is day, not AWS's timestamp: timestamp is reserved.
+  # Projection computes S3 prefixes from the WHERE clause, so a day filter
+  # bounds the scan. NOW-1YEARS matches the AU-11 one-year floor. The column
+  # list is trimmed; JsonSerDe ignores keys the table does not declare.
+  # $${region} and $${day} escape HCL so Athena receives ${region} and ${day}.
+  query = <<-EOT
+    CREATE EXTERNAL TABLE cloudtrail_logs (
+      eventversion STRING,
+      useridentity STRUCT<
+        type: STRING, principalid: STRING, arn: STRING, accountid: STRING, invokedby: STRING, accesskeyid: STRING, username: STRING,
+        sessioncontext: STRUCT<
+          attributes: STRUCT<mfaauthenticated: STRING, creationdate: STRING>,
+          sessionissuer: STRUCT<type: STRING, principalid: STRING, arn: STRING, accountid: STRING, username: STRING>
+        >
+      >,
+      eventtime STRING, eventsource STRING, eventname STRING, awsregion STRING, sourceipaddress STRING, useragent STRING,
+      errorcode STRING, errormessage STRING, requestparameters STRING, responseelements STRING, additionaleventdata STRING,
+      requestid STRING, eventid STRING, readonly STRING, eventtype STRING, recipientaccountid STRING
+    )
+    PARTITIONED BY (region STRING, day STRING)
+    ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe'
+    STORED AS INPUTFORMAT 'com.amazon.emr.cloudtrail.CloudTrailInputFormat'
+    OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+    LOCATION 's3://${var.log_bucket_name}/AWSLogs/${data.aws_caller_identity.current.account_id}/CloudTrail/'
+    TBLPROPERTIES (
+      'projection.enabled' = 'true',
+      'projection.region.type' = 'enum',
+      'projection.region.values' = '${join(",", sort(data.aws_regions.enabled.names))}',
+      'projection.day.type' = 'date',
+      'projection.day.format' = 'yyyy/MM/dd',
+      'projection.day.range' = 'NOW-1YEARS,NOW',
+      'projection.day.interval' = '1',
+      'projection.day.interval.unit' = 'DAYS',
+      'storage.location.template' = 's3://${var.log_bucket_name}/AWSLogs/${data.aws_caller_identity.current.account_id}/CloudTrail/$${region}/$${day}'
+    )
+  EOT
+}
+
+resource "aws_athena_named_query" "au6_root_activity" {
+  name        = "au6-root-activity-90d"
+  description = "AU-6: every root call in the last 90 days, newest first."
+  workgroup   = aws_athena_workgroup.audit.name
+  database    = aws_glue_catalog_database.audit.name
+
+  query = <<-EOT
+    SELECT eventtime, eventsource, eventname, awsregion, sourceipaddress, errorcode
+    FROM cloudtrail_logs
+    WHERE useridentity.type = 'Root'
+      AND day >= date_format(current_timestamp - interval '90' day, '%Y/%m/%d')
+    ORDER BY eventtime DESC;
+  EOT
+}
+
+# No region filter. IAM events land in us-east-1, or us-gov-west-1 in GovCloud,
+# and eventsource alone finds them in either partition. The day filter bounds
+# the scan.
+resource "aws_athena_named_query" "ac2_iam_changes_by_actor" {
+  name        = "ac2-iam-changes-by-actor"
+  description = "AC-2: IAM write calls in the last 90 days, counted by actor and event."
+  workgroup   = aws_athena_workgroup.audit.name
+  database    = aws_glue_catalog_database.audit.name
+
+  query = <<-EOT
+    SELECT useridentity.arn AS actor, eventname, count(*) AS calls
+    FROM cloudtrail_logs
+    WHERE eventsource = 'iam.amazonaws.com'
+      AND readonly = 'false'
+      AND day >= date_format(current_timestamp - interval '90' day, '%Y/%m/%d')
+    GROUP BY useridentity.arn, eventname
+    ORDER BY calls DESC;
+  EOT
+}
+
+resource "aws_athena_named_query" "si4_calls_per_region" {
+  name        = "si4-calls-per-region-per-day"
+  description = "SI-4: API calls per region per day over the last 30 days, busiest first."
+  workgroup   = aws_athena_workgroup.audit.name
+  database    = aws_glue_catalog_database.audit.name
+
+  query = <<-EOT
+    SELECT region, day, count(*) AS calls
+    FROM cloudtrail_logs
+    WHERE day >= date_format(current_timestamp - interval '30' day, '%Y/%m/%d')
+    GROUP BY region, day
+    ORDER BY calls DESC
+    LIMIT 50;
+  EOT
 }

@@ -53,6 +53,14 @@ variable "critical_event_sns_topic_arn" {
   }
 }
 
+# A name, and the caller's bucket. Separate from the log bucket. Expected to
+# be SSE-KMS with the same CMK, a short expiry, and no Object Lock.
+variable "athena_results_bucket_name" {
+  description = "Name of the existing S3 bucket that receives Athena query results. Required. Not the log bucket; see the module README."
+  type        = string
+  nullable    = false
+}
+
 # CloudWatch Logs accepts a fixed list of retention values. This is that list
 # from 365 up. 0 (never expire) is left out: a log group that never expires
 # is a cost decision, not an AU-11 floor.
