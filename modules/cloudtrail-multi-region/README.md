@@ -147,7 +147,7 @@ Keep the topic's `__default_statement_ID`. The alarms publish through it, becaus
 | AU-9 (Protection of Audit Information) | Yes | AU-9 | Log file validation (hourly signed digests) and SSE-KMS with the agency-managed CMK. Object Lock is inherited from the Lab 2 bucket |
 | AU-11 (Audit Record Retention) | Yes | 1-year retention | CloudWatch Logs retention 365 days minimum, enforced by validation. The S3 copy's retention is the Lab 2 bucket's Object Lock default |
 | AU-6 (Audit Record Review) | Yes | AU-6 (weekly review) | Workgroup with enforced, CMK-encrypted results and saved review queries. The module makes the review runnable; it does not prove it ran |
-| AU-7 (Audit Record Reduction and Report Generation) | Yes | | Partition-projected table and three saved queries that reduce the trail to root activity, IAM changes by actor, and calls per region per day |
+| AU-7 (Audit Record Reduction and Report Generation) | Yes | | Partition-projected table and three saved queries that reduce the trail to root activity, IAM changes by actor, and calls per region per day. Met only after the table DDL is run, so it is not in `controls_satisfied` |
 | SI-4 (System Monitoring) | Yes | SI-4 | Three metric filters with alarms (every region, minutes) and three EventBridge rules (home region, seconds) on root activity, console login without MFA, and IAM policy changes, published to the caller's SNS topic |
 | AU-9(2) (Store on Separate Systems) | Yes | | **Not met.** Single-account trail. See Scope limits |
 
@@ -192,7 +192,7 @@ Sample attestation after apply:
   "module": "cloudtrail-multi-region",
   "module_version": "1.4.0",
   "framework_targets": ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.1"],
-  "controls_satisfied": ["AU-2", "AU-3", "AU-6", "AU-7", "AU-9", "AU-11", "AU-12", "SI-4"],
+  "controls_satisfied": ["AU-2", "AU-3", "AU-6", "AU-9", "AU-11", "AU-12", "SI-4"],
   "known_gaps": ["AU-9(2)"],
   "environment": "dev",
   "required_compliance_scope": "fedramp-high",
