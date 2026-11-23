@@ -27,13 +27,13 @@ output "compliance_attestation" {
     module_version    = local.required_tags.module_version
     framework_targets = ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.1"]
     # The list is the mapping. The booleans below are the checks.
-    # critical_alarms_present (SI-4) arrives with the alerting resources in PR 2.
     controls_satisfied = [
       "AU-2",
       "AU-3",
       "AU-9",
       "AU-11",
       "AU-12",
+      "SI-4",
     ]
     # G-5: the gap is in the output, not only the README. Logs sit in the
     # account they describe; a separate log-archive account would meet it.
@@ -75,5 +75,31 @@ output "compliance_attestation" {
     required_tags_present = alltrue([
       for k in keys(local.required_tags) : contains(keys(aws_cloudtrail.this.tags_all), k)
     ])
+
+    # SI-4: the alarms and rules exist, are on, and point at the topic. It does
+    # not prove the topic delivers. The step 13 alert test does that.
+    critical_alarms_present = (
+      alltrue([
+        for a in [
+          aws_cloudwatch_metric_alarm.root_activity,
+          aws_cloudwatch_metric_alarm.console_login_no_mfa,
+          aws_cloudwatch_metric_alarm.iam_policy_change,
+        ] : a.actions_enabled && contains(a.alarm_actions, var.critical_event_sns_topic_arn)
+      ]) &&
+      alltrue([
+        for r in [
+          aws_cloudwatch_event_rule.root_activity,
+          aws_cloudwatch_event_rule.console_login_no_mfa,
+          aws_cloudwatch_event_rule.iam_policy_change,
+        ] : r.state == "ENABLED"
+      ]) &&
+      alltrue([
+        for t in [
+          aws_cloudwatch_event_target.root_activity,
+          aws_cloudwatch_event_target.console_login_no_mfa,
+          aws_cloudwatch_event_target.iam_policy_change,
+        ] : t.arn == var.critical_event_sns_topic_arn
+      ])
+    )
   }
 }

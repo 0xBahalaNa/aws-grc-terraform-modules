@@ -1,12 +1,14 @@
 # cloudtrail-multi-region — Lab 4 module (v1.4.0)
 #
-# PR 1 of 3, collection: one multi-region trail to an existing Lab 2 bucket,
-# its CloudWatch Logs group, and the role CloudTrail uses to write there.
-# Alerting (metric filters, alarms, EventBridge) and Athena come in PRs 2 and 3.
+# Collection: one multi-region trail to an existing Lab 2 bucket, its
+# CloudWatch Logs group, and the role CloudTrail uses to write there.
+# PR 2 of 3 adds alerting (metric filters, alarms, EventBridge). Athena comes
+# in PR 3.
 # Companion walkthrough: luigicarpio.dev/labs/2026-11-aws-lab-4-cloudtrail-audit
 #
 # The module does not write the bucket policy or the key policy. Both belong
-# to the Lab 2 stack. The README lists the statements the caller adds.
+# to the Lab 2 stack. It also does not create the SNS topic or write its
+# policy. The README lists the statements the caller adds.
 
 # Partition, region, and account build the trail ARN as a string. Nothing is
 # typed by hand, so the same code runs in arn:aws-us-gov.
@@ -38,6 +40,8 @@ locals {
   trail_name     = "${var.name_prefix}-trail"
   log_group_name = "/aws/cloudtrail/${local.trail_name}"
   trail_arn      = "arn:${data.aws_partition.current.partition}:cloudtrail:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:trail/${local.trail_name}"
+
+  metric_namespace = "GRC/Lab4"
 }
 
 # AU-6 / AU-11 — the searchable copy of the trail. Retention is set here in
@@ -128,4 +132,172 @@ resource "aws_cloudtrail" "this" {
   # policy, so the graph could create the trail before the policy exists.
   # CloudTrail checks at create time that the role can write to the group.
   depends_on = [aws_iam_role_policy.cloudtrail_to_cwlogs]
+}
+
+# SI-4 — the CIS AWS Foundations patterns behind Security Hub CloudWatch.1,
+# .3, and .4. One log group carries every region, so these see every region.
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_metric_filter
+resource "aws_cloudwatch_log_metric_filter" "root_activity" {
+  name           = "RootActivity"
+  log_group_name = aws_cloudwatch_log_group.this.name
+  pattern        = "{ $.userIdentity.type = \"Root\" && $.userIdentity.invokedBy NOT EXISTS && $.eventType != \"AwsServiceEvent\" }"
+
+  metric_transformation {
+    name      = "RootActivity"
+    namespace = local.metric_namespace
+    value     = "1"
+  }
+}
+
+resource "aws_cloudwatch_log_metric_filter" "console_login_no_mfa" {
+  name           = "ConsoleLoginNoMFA"
+  log_group_name = aws_cloudwatch_log_group.this.name
+  pattern        = "{ ($.eventName = \"ConsoleLogin\") && ($.additionalEventData.MFAUsed != \"Yes\") && ($.userIdentity.type = \"IAMUser\") && ($.responseElements.ConsoleLogin = \"Success\") }"
+
+  metric_transformation {
+    name      = "ConsoleLoginNoMFA"
+    namespace = local.metric_namespace
+    value     = "1"
+  }
+}
+
+resource "aws_cloudwatch_log_metric_filter" "iam_policy_change" {
+  name           = "IAMPolicyChange"
+  log_group_name = aws_cloudwatch_log_group.this.name
+  pattern        = "{ ($.eventName = DeleteGroupPolicy) || ($.eventName = DeleteRolePolicy) || ($.eventName = DeleteUserPolicy) || ($.eventName = PutGroupPolicy) || ($.eventName = PutRolePolicy) || ($.eventName = PutUserPolicy) || ($.eventName = CreatePolicy) || ($.eventName = DeletePolicy) || ($.eventName = CreatePolicyVersion) || ($.eventName = DeletePolicyVersion) || ($.eventName = AttachRolePolicy) || ($.eventName = DetachRolePolicy) || ($.eventName = AttachUserPolicy) || ($.eventName = DetachUserPolicy) || ($.eventName = AttachGroupPolicy) || ($.eventName = DetachGroupPolicy) }"
+
+  metric_transformation {
+    name      = "IAMPolicyChange"
+    namespace = local.metric_namespace
+    value     = "1"
+  }
+}
+
+# SI-4 — one alarm per filter. metric_name and namespace are read off the
+# filter, so the alarm cannot name a metric that does not exist.
+# notBreaching: a filter publishes only on a match, so "missing" would leave
+# the alarm gray almost always. The cost is that an alarm cannot tell no
+# events from no pipeline. Pipeline health is the trail status, not the alarm.
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm
+resource "aws_cloudwatch_metric_alarm" "root_activity" {
+  alarm_name          = "${var.name_prefix}-root-activity"
+  metric_name         = aws_cloudwatch_log_metric_filter.root_activity.metric_transformation[0].name
+  namespace           = aws_cloudwatch_log_metric_filter.root_activity.metric_transformation[0].namespace
+  statistic           = "Sum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [var.critical_event_sns_topic_arn]
+
+  tags = merge(var.tags, local.required_tags)
+}
+
+resource "aws_cloudwatch_metric_alarm" "console_login_no_mfa" {
+  alarm_name          = "${var.name_prefix}-console-login-no-mfa"
+  metric_name         = aws_cloudwatch_log_metric_filter.console_login_no_mfa.metric_transformation[0].name
+  namespace           = aws_cloudwatch_log_metric_filter.console_login_no_mfa.metric_transformation[0].namespace
+  statistic           = "Sum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [var.critical_event_sns_topic_arn]
+
+  tags = merge(var.tags, local.required_tags)
+}
+
+resource "aws_cloudwatch_metric_alarm" "iam_policy_change" {
+  alarm_name          = "${var.name_prefix}-iam-policy-change"
+  metric_name         = aws_cloudwatch_log_metric_filter.iam_policy_change.metric_transformation[0].name
+  namespace           = aws_cloudwatch_log_metric_filter.iam_policy_change.metric_transformation[0].namespace
+  statistic           = "Sum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [var.critical_event_sns_topic_arn]
+
+  tags = merge(var.tags, local.required_tags)
+}
+
+# SI-4 — the seconds path, on the default bus. EventBridge is regional, so
+# these rules match only events delivered in the module's region. IAM and
+# root sign-in land in us-east-1. The metric-filter path sees every region
+# through the one log group. That is why both paths exist.
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_rule
+resource "aws_cloudwatch_event_rule" "root_activity" {
+  name  = "${var.name_prefix}-root-activity"
+  state = "ENABLED"
+
+  event_pattern = jsonencode({
+    "detail-type" = ["AWS API Call via CloudTrail", "AWS Console Sign In via CloudTrail"]
+    detail = {
+      userIdentity = { type = ["Root"] }
+    }
+  })
+
+  tags = merge(var.tags, local.required_tags)
+}
+
+resource "aws_cloudwatch_event_rule" "console_login_no_mfa" {
+  name  = "${var.name_prefix}-console-login-no-mfa"
+  state = "ENABLED"
+
+  event_pattern = jsonencode({
+    "detail-type" = ["AWS Console Sign In via CloudTrail"]
+    detail = {
+      eventName           = ["ConsoleLogin"]
+      userIdentity        = { type = ["IAMUser"] }
+      additionalEventData = { MFAUsed = ["No"] }
+      responseElements    = { ConsoleLogin = ["Success"] }
+    }
+  })
+
+  tags = merge(var.tags, local.required_tags)
+}
+
+resource "aws_cloudwatch_event_rule" "iam_policy_change" {
+  name  = "${var.name_prefix}-iam-policy-change"
+  state = "ENABLED"
+
+  event_pattern = jsonencode({
+    source        = ["aws.iam"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
+    detail = {
+      eventSource = ["iam.amazonaws.com"]
+      eventName = [
+        "CreatePolicy", "DeletePolicy", "CreatePolicyVersion", "DeletePolicyVersion",
+        "AttachRolePolicy", "DetachRolePolicy", "AttachUserPolicy", "DetachUserPolicy",
+        "AttachGroupPolicy", "DetachGroupPolicy", "PutRolePolicy", "PutUserPolicy",
+        "PutGroupPolicy", "DeleteRolePolicy", "DeleteUserPolicy", "DeleteGroupPolicy",
+      ]
+    }
+  })
+
+  tags = merge(var.tags, local.required_tags)
+}
+
+# The topic policy must admit events.amazonaws.com (module README). The
+# provider does not add that statement the way the console does.
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_target
+resource "aws_cloudwatch_event_target" "root_activity" {
+  rule      = aws_cloudwatch_event_rule.root_activity.name
+  target_id = "sns"
+  arn       = var.critical_event_sns_topic_arn
+}
+
+resource "aws_cloudwatch_event_target" "console_login_no_mfa" {
+  rule      = aws_cloudwatch_event_rule.console_login_no_mfa.name
+  target_id = "sns"
+  arn       = var.critical_event_sns_topic_arn
+}
+
+resource "aws_cloudwatch_event_target" "iam_policy_change" {
+  rule      = aws_cloudwatch_event_rule.iam_policy_change.name
+  target_id = "sns"
+  arn       = var.critical_event_sns_topic_arn
 }
