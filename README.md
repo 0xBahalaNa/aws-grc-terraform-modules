@@ -42,7 +42,7 @@ Composite across the planned module set. Each module's `README.md` carries the p
 | IA-2 (1)(2), IA-5 | Yes | IA-2 AAL2 delta | `iam-hardening`: RequireMFA deny gate (BoolIfExists), MFA-required auditor role trust, account password policy (max age / complexity) |
 | SC-12, SC-13, SC-28 | Yes | agency-managed CMK delta (SC-28) | `kms-key-management` + `s3-compliant-bucket`: agency-managed CMK only, FIPS endpoints, automatic rotation, SSE-KMS on storage |
 | SC-7, SC-7(5), AC-4 | Yes | P1 boundary | `vpc-boundary`: public/private subnets, SG+NACL least privilege, flow logs, VPC endpoints for S3/KMS |
-| AU-2, AU-6, AU-7, AU-9, AU-11, AU-12 | Yes | AU-11 1-year retention delta | `cloudtrail-multi-region`: multi-region single-account trail, CMK encryption, log file validation, 1-year CloudWatch Logs retention, Athena review queries. Object Lock is inherited from `s3-compliant-bucket` |
+| AU-2, AU-6, AU-7, AU-9, AU-11, AU-12 | Yes | AU-11 1-year retention delta | `cloudtrail-multi-region`: multi-region single-account trail, CMK encryption, log file validation, 1-year CloudWatch Logs retention, Athena review queries (AU-6 / AU-7 once the table DDL is run). Object Lock is inherited from `s3-compliant-bucket` |
 | CA-7, CM-3, CM-6 | Yes | - | `config-recorder` + NIST 800-53 conformance pack; required-tag enforcement via `merge()` |
 | SI-4, RA-5, SI-4(2) | Yes | - | `guardduty-eventbridge`: detection + EventBridge → SNS pipeline |
 

@@ -36,12 +36,12 @@ output "compliance_attestation" {
     module            = "cloudtrail-multi-region"
     module_version    = local.required_tags.module_version
     framework_targets = ["NIST 800-53 Rev 5", "FedRAMP High", "CJIS v6.1"]
-    # The list is the mapping. The booleans below are the checks. AU-7 is not
-    # listed: it needs the table, which is created by hand outside state.
+    # The list is the mapping. The booleans below are the checks. AU-6 and
+    # AU-7 are not listed: the review queries need the table, which is
+    # created by hand outside state.
     controls_satisfied = [
       "AU-2",
       "AU-3",
-      "AU-6",
       "AU-9",
       "AU-11",
       "AU-12",
